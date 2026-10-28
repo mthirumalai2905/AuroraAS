@@ -11,10 +11,10 @@ export const metadata: Metadata = { title: "Stakeholder login" };
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const { next } = await searchParams;
   return (
-    <main className="grid min-h-dvh bg-paper lg:grid-cols-[1.1fr_1fr]">
+    <main className="grid h-dvh overflow-hidden bg-paper lg:grid-cols-[1.1fr_1fr]">
       <LoginShowcase />
-      <section className="relative flex flex-col px-6 py-8 md:px-12">
-        <div className="flex items-center justify-between">
+      <section className="relative flex h-full min-h-0 flex-col overflow-y-auto px-6 py-6 md:px-12 lg:px-14 scrollbar-none short:py-4">
+        <div className="flex shrink-0 items-center justify-between">
           <Link href="/" className="lg:invisible">
             <Logo />
           </Link>
@@ -22,10 +22,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             <ArrowLeft className="h-3.5 w-3.5" /> Back to site
           </Link>
         </div>
-        <div className="flex flex-1 items-center justify-center py-12">
+        <div className="flex flex-1 items-center justify-center py-6 short:py-3">
           <LoginForm demos={demoAccounts} next={next} />
         </div>
-        <p className="text-center text-[12px] text-muted">
+        <p className="shrink-0 text-center text-[12px] text-muted">
           Need access? Contact{" "}
           <a href="mailto:ir@aurora-as.com" className="text-ink underline-offset-4 hover:underline">
             ir@aurora-as.com

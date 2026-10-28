@@ -21,11 +21,10 @@ export default function CareersPage() {
   return (
     <>
       <PageHeader
-        image="/images/card-grow.jpg"
         eyebrow="Careers"
         title="Do the best work of your career."
         italicWords={["best"]}
-        description="We hire curious, humble and ambitious people — then give them real responsibility early. 380 colleagues, 31 nationalities, one partnership."
+        description="We hire curious, humble and ambitious people, then give them real responsibility early. 380 colleagues, 31 nationalities, one partnership."
       >
         <div className="mt-8">
           <Button href="#openings">See open roles</Button>

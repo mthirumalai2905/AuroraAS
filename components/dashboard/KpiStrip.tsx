@@ -62,16 +62,16 @@ export function KpiStrip({ summary }: { summary: Register["summary"] }) {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.6, delay: 0.05 + i * 0.06, ease: [0.22, 1, 0.36, 1] }}
           whileHover={{ y: -2 }}
-          className="rounded-2xl border border-black/[0.05] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] last:col-span-2 md:last:col-span-1"
+          className="rounded-2xl border border-black/[0.05] bg-white px-3.5 py-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] last:col-span-2 md:last:col-span-1"
         >
-          <div className="flex items-center gap-2 text-[12px] font-medium text-neutral-500">
-            <span className="grid h-6 w-6 place-items-center rounded-lg" style={{ background: `${c.color}1a`, color: c.color }}>
-              <c.icon className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-2 text-[11.5px] font-medium text-neutral-500">
+            <span className="grid h-5 w-5 place-items-center rounded-md" style={{ background: `${c.color}1a`, color: c.color }}>
+              <c.icon className="h-3 w-3" />
             </span>
             {c.label}
           </div>
-          <div className="mt-2.5 truncate text-[22px] font-semibold tracking-tight text-neutral-900">{c.node}</div>
-          <div className="mt-0.5 text-[12px]">{c.foot}</div>
+          <div className="mt-1.5 truncate text-[19px] font-semibold leading-tight tracking-tight text-neutral-900">{c.node}</div>
+          <div className="mt-0.5 text-[11.5px]">{c.foot}</div>
         </motion.div>
       ))}
     </div>

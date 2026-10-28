@@ -19,7 +19,7 @@ export function Approach() {
             eyebrow="Our approach"
             title="A process refined over 27 years."
             italicWords={["refined"]}
-            description="Disciplined at entry, hands-on during ownership and thoughtful at exit. Our process is built to compound value — and trust."
+            description="Disciplined at entry, hands-on during ownership and thoughtful at exit. Our process is built to compound value, and trust."
           />
         </div>
         <div ref={ref} className="relative pl-12">

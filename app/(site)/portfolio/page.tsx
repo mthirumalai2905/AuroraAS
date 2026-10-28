@@ -16,11 +16,10 @@ export default function PortfolioPage() {
   return (
     <>
       <PageHeader
-        image="/images/card-institution.jpg"
         eyebrow="Portfolio"
         title="Fourteen companies. One shared ambition."
         italicWords={["shared"]}
-        description="We back businesses that solve essential problems — powering the grid, curing disease, moving goods and money cleanly. Explore our current and realised investments."
+        description="We back businesses that solve essential problems: powering the grid, curing disease, moving goods and money cleanly. Explore our current and realised investments."
       >
         <div className="mt-10 grid grid-cols-2 gap-6 border-t border-line pt-8 sm:grid-cols-4">
           {facts.map((f) => (

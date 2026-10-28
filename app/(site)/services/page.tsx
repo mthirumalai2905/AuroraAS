@@ -14,11 +14,10 @@ export default function ServicesPage() {
   return (
     <>
       <PageHeader
-        image="/images/card-prism.jpg"
         eyebrow="Capabilities"
         title="Every stage of capital, under one roof."
         italicWords={["Every"]}
-        description="Private equity, growth, infrastructure, public markets, wealth and advisory — six integrated platforms sharing research, operators and a single long-term view."
+        description="Private equity, growth, infrastructure, public markets, wealth and advisory: six integrated platforms sharing research, operators and a single long-term view."
       >
         <div className="mt-8 flex flex-wrap gap-2">
           {services.map((s) => (
@@ -64,9 +63,28 @@ export default function ServicesPage() {
                   <Button href="/contact" variant="outline" size="sm">Enquire</Button>
                 </div>
               </div>
-              <div className="relative min-h-[320px] overflow-hidden rounded-[20px] bg-lilac-3">
-                <Image src={s.image} alt="" fill sizes="(min-width: 1024px) 45vw, 100vw" className="object-cover" />
-              </div>
+              {s.image ? (
+                <div className="relative min-h-[320px] overflow-hidden rounded-[20px] bg-lilac-3">
+                  <Image src={s.image} alt="" fill sizes="(min-width: 1024px) 45vw, 100vw" className="object-cover" />
+                </div>
+              ) : (
+                <div className="grain relative flex min-h-[320px] flex-col justify-between overflow-hidden rounded-[20px] bg-gradient-to-br from-[#231d3a] via-[#2f2550] to-[#171326] p-8 text-white">
+                  <svg viewBox="0 0 400 320" className="pointer-events-none absolute inset-0 h-full w-full opacity-25" fill="none">
+                    <path d="M 30 260 C 120 240, 170 180, 230 130 C 290 80, 330 55, 380 40" stroke="#c7bdf2" strokeWidth="2" />
+                    <path d="M 30 280 C 130 265, 190 215, 260 165 C 320 120, 350 95, 380 80" stroke="#bfe3f5" strokeWidth="1.25" strokeDasharray="4 6" />
+                    <circle cx="230" cy="130" r="5" fill="#c7bdf2" />
+                    <circle cx="380" cy="40" r="6" fill="#bfe3f5" />
+                  </svg>
+                  <div className="relative flex items-center justify-between">
+                    <span className="eyebrow text-[9.5px] text-white/60">Minority growth mandate</span>
+                    <span className="eyebrow rounded-full bg-white/10 px-3 py-1 text-[9px] text-lilac">$25M – $250M</span>
+                  </div>
+                  <div className="relative">
+                    <div className="display text-[64px] leading-none text-lilac">{s.metric.value}</div>
+                    <p className="mt-2 max-w-xs text-[14px] text-white/70">{s.summary}</p>
+                  </div>
+                </div>
+              )}
             </article>
           </Reveal>
         ))}

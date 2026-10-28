@@ -229,7 +229,7 @@ export function SheetGrid<R>({ id, rows, columns, getRowId, density, onOpenRow, 
         } else if (mod && e.key.toLowerCase() === "c") {
           copy();
         } else if (!mod && e.key.length === 1) {
-          onNotice("This register is read-only — figures are maintained by Aurora Registrar");
+          onNotice("This register is read-only. Figures are maintained by Aurora Registrar");
         } else return;
     }
     e.preventDefault();
@@ -421,7 +421,7 @@ export function SheetGrid<R>({ id, rows, columns, getRowId, density, onOpenRow, 
                       }}
                       onDoubleClick={() => {
                         if (sticky && onOpenRow) onOpenRow(row);
-                        else onNotice("This register is read-only — figures are maintained by Aurora Registrar");
+                        else onNotice("This register is read-only. Figures are maintained by Aurora Registrar");
                       }}
                       className={cn(
                         "relative flex shrink-0 cursor-cell select-none items-center border-b border-r border-black/[0.06] px-3 text-[13px] tabular-nums text-neutral-800 transition-colors duration-150",

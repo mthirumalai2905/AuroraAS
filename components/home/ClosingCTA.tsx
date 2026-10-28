@@ -22,7 +22,7 @@ export function ClosingCTA() {
           />
           <Reveal delay={0.2}>
             <p className="mx-auto mt-6 max-w-md text-[16px] leading-relaxed text-white/80">
-              Founders, co-investors and institutions — we would like to hear what you are building.
+              Founders, co-investors and institutions: we would like to hear what you are building.
             </p>
             <div className="mt-9 flex flex-wrap justify-center gap-3">
               <Button href="/contact" variant="light">Talk to us</Button>

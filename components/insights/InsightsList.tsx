@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { ArrowUpRight } from "lucide-react";
-import { categoryImage, insights } from "@/lib/data/site";
+import { InsightCover } from "@/components/insights/InsightCover";
+import { insights } from "@/lib/data/site";
 import { fmt } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -41,15 +41,8 @@ export function InsightsList() {
         >
           {lead && (
             <Link href={`/insights/${lead.slug}`} className="group mb-14 grid gap-3 rounded-[28px] bg-white p-3 lg:grid-cols-[1.2fr_1fr]">
-              <div className="relative min-h-80 overflow-hidden rounded-[20px] bg-lilac-3">
-                <Image
-                  src={categoryImage[lead.category]}
-                  alt=""
-                  fill
-                  sizes="(min-width: 1024px) 55vw, 100vw"
-                  className="object-cover transition-transform duration-[1.4s] ease-apple group-hover:scale-105"
-                />
-                <span className="eyebrow absolute top-5 left-5 rounded-full bg-white px-3 py-1.5 text-[9.5px]">Featured</span>
+              <div className="relative min-h-80 overflow-hidden rounded-[20px]">
+                <InsightCover article={lead} index={insights.indexOf(lead)} badge="Featured" size="lead" className="h-full min-h-80 w-full" />
               </div>
               <div className="flex flex-col justify-center p-5 md:p-10">
                 <span className="eyebrow text-[10px] text-muted">{lead.category}</span>
@@ -65,14 +58,8 @@ export function InsightsList() {
           <div className="grid gap-x-4 gap-y-12 md:grid-cols-2 lg:grid-cols-3">
             {rest.map((a) => (
               <Link key={a.slug} href={`/insights/${a.slug}`} className="group block">
-                <div className="relative aspect-[4/3] overflow-hidden rounded-[20px] bg-lilac-3">
-                  <Image
-                    src={categoryImage[a.category]}
-                    alt=""
-                    fill
-                    sizes="(min-width: 1024px) 33vw, 50vw"
-                    className="object-cover transition-transform duration-[1.2s] ease-apple group-hover:scale-105"
-                  />
+                <div className="relative aspect-[4/3] overflow-hidden rounded-[20px]">
+                  <InsightCover article={a} index={insights.indexOf(a)} className="h-full w-full" />
                 </div>
                 <div className="eyebrow mt-5 flex justify-between text-[10px] text-muted">
                   <span>{a.category}</span>

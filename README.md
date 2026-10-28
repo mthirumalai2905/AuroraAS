@@ -17,11 +17,11 @@ Open http://localhost:3000.
 
 Demo accounts for `/login` (password for both: `aurora2026`):
 
-- ingrid@solberg.no — Solberg Family Office
-- marcus.chen@pacificcrest.com — Pacific Crest Pension Fund
+- ingrid@solberg.no (Solberg Family Office)
+- marcus.chen@pacificcrest.com (Pacific Crest Pension Fund)
 
 ## Scripts
 
-- `npm run dev` — development server
-- `npm run build` — production build
-- `npm run start` — serve the production build
+- `npm run dev`: development server
+- `npm run build`: production build
+- `npm run start`: serve the production build

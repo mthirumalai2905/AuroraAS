@@ -27,7 +27,7 @@ export function Intro() {
         </div>
         <Reveal delay={0.1}>
           <p className="max-w-md text-[19px] leading-[1.5] text-ink-2 md:mt-3">
-            Aurora AS is a Nordic investment group that owns and grows businesses for the long term — combining private equity
+            Aurora AS is a Nordic investment group that owns and grows businesses for the long term, combining private equity
             discipline with the patience of a family office.
           </p>
         </Reveal>
@@ -47,13 +47,13 @@ export function Intro() {
             <div className="relative flex h-full flex-col justify-between p-7">
               <h3 className="text-[24px] font-medium tracking-tight">Capital that grows</h3>
               <p className="max-w-[250px] text-[14px] leading-relaxed text-ink-2">
-                We reinvest alongside our companies year after year — compounding value instead of chasing exits.
+                We reinvest alongside our companies year after year, compounding value instead of chasing exits.
               </p>
             </div>
           </div>
         </StaggerItem>
         <StaggerItem>
-          <PlumCard title="Patient by design" stat="11.4 yrs" body="Average holding period — roughly twice the industry norm." />
+          <PlumCard title="Patient by design" stat="11.4 yrs" body="Average holding period, roughly twice the industry norm." />
         </StaggerItem>
         <StaggerItem>
           <PlumCard title="Operators, not spectators" stat="40" body="Operating partners working inside our companies from day one." />

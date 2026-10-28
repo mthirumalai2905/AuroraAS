@@ -15,11 +15,12 @@ const cols = [
 ] as const;
 
 const path = [
-  [0, 0], [1, 0], [2, 1], [3, 2], [1, 3], [0, 4], [4, 2], [1, 1],
+  [0, 0], [1, 0], [2, 1], [3, 2], [1, 3], [0, 4], [4, 2], [2, 6], [0, 8], [4, 7], [1, 1],
 ] as const;
 
 export function PortalPreview() {
-  const rows = useMemo(() => buildRegister("solberg").rows.slice(0, 7), []);
+  const rows = useMemo(() => buildRegister("solberg").rows.slice(0, 9), []);
+  const sum = useMemo(() => rows.reduce((s, r) => s + r.shares.you, 0), [rows]);
   const [step, setStep] = useState(0);
 
   useEffect(() => {
@@ -110,7 +111,7 @@ export function PortalPreview() {
                 <td className={cn("border-r border-b border-black/[0.05] text-center text-[10px] text-muted transition-colors", ri === r && "bg-[#0a84ff]/10 text-[#0a84ff]")}>
                   {ri + 2}
                 </td>
-                <td className="border-r border-b border-black/[0.05] px-3 py-2">
+                <td className="border-r border-b border-black/[0.05] px-3 py-2.5">
                   <span className="flex items-center gap-2">
                     <span className="h-3.5 w-3.5 rounded" style={{ background: `linear-gradient(135deg, ${row.company.colors[0]}, ${row.company.colors[1]})` }} />
                     <span className="truncate font-medium">{row.company.name}</span>
@@ -120,7 +121,7 @@ export function PortalPreview() {
                   <td
                     key={col.key}
                     className={cn(
-                      "relative border-r border-b border-black/[0.05] px-3 py-2 text-right tabular-nums",
+                      "relative border-r border-b border-black/[0.05] px-3 py-2.5 text-right tabular-nums",
                       ci > 2 && "hidden sm:table-cell",
                       col.key === "rank" && row.rank === 1 && "text-[#30a14e]",
                     )}
@@ -147,7 +148,9 @@ export function PortalPreview() {
             {t}
           </span>
         ))}
-        <span className="ml-auto hidden pr-2 text-muted sm:inline">Sum: 48,213,000 · Avg: 6,887,571</span>
+        <span className="ml-auto hidden pr-2 text-muted sm:inline">
+          Sum: {sum.toLocaleString("en-US")} · Avg: {Math.round(sum / rows.length).toLocaleString("en-US")}
+        </span>
       </div>
     </div>
   );

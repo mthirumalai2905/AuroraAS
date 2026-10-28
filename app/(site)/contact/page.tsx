@@ -11,7 +11,6 @@ export default function ContactPage() {
   return (
     <>
       <PageHeader
-        image="/images/card-rings.jpg"
         eyebrow="Contact"
         title="Let's start a conversation."
         italicWords={["conversation."]}

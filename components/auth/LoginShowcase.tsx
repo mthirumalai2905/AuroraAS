@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { Trophy, TrendingUp } from "lucide-react";
@@ -24,23 +23,31 @@ function float(delay: number) {
   };
 }
 
-const glass = "rounded-[20px] border border-white/50 bg-white/70 text-ink shadow-[0_30px_60px_-30px_rgba(15,14,23,0.45)] backdrop-blur-xl";
+const glass = "rounded-[20px] border border-white/50 bg-white/75 text-ink shadow-[0_30px_60px_-30px_rgba(15,14,23,0.45)] backdrop-blur-xl";
 
 export function LoginShowcase() {
   let acc = 0;
   return (
-    <section className="hidden p-3 lg:block">
-      <div className="grain relative flex h-full flex-col justify-between overflow-hidden rounded-[28px] p-10 text-white">
-        <motion.div initial={{ scale: 1.12 }} animate={{ scale: 1 }} transition={{ duration: 2.6, ease }} className="absolute inset-0">
-          <Image src="/images/hero-sky.jpg" alt="" fill priority sizes="55vw" className="object-cover" />
-        </motion.div>
-        <div className="absolute inset-0 bg-gradient-to-b from-night/40 via-transparent to-night/70" />
+    <section className="hidden h-full min-h-0 p-3 lg:block">
+      <div className="grain relative flex h-full flex-col justify-between overflow-hidden rounded-[28px] bg-[#141122] p-8 text-white xl:p-10 short:p-6">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(65% 55% at 22% 18%, rgba(199,189,242,0.42), transparent 70%), radial-gradient(60% 50% at 82% 38%, rgba(191,227,245,0.34), transparent 70%), radial-gradient(75% 65% at 50% 95%, rgba(65,50,112,0.65), transparent 75%)",
+          }}
+        />
+        <svg viewBox="0 0 600 800" className="pointer-events-none absolute inset-0 h-full w-full opacity-20" fill="none">
+          <circle cx="300" cy="380" r="260" stroke="#c7bdf2" strokeWidth="1" />
+          <circle cx="300" cy="380" r="185" stroke="#bfe3f5" strokeWidth="1" strokeDasharray="4 6" />
+        </svg>
 
         <Link href="/" className="relative">
           <Logo />
         </Link>
 
-        <div className="relative mx-auto h-[360px] w-full max-w-[500px]">
+        <div className="relative mx-auto my-4 h-[clamp(250px,36vh,360px)] w-full max-w-[500px] short:my-2 short:scale-[0.92]">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.3, ease }} className="absolute top-6 left-0 w-[290px]">
             <motion.div {...float(0)} className={`${glass} p-5`}>
               <div className="eyebrow text-[9.5px] text-muted">Nordlys Energy · ownership</div>
@@ -100,11 +107,11 @@ export function LoginShowcase() {
         </div>
 
         <div className="relative">
-          <h2 className="display max-w-md text-[52px] leading-[1.02]">
+          <h2 className="display max-w-md text-[clamp(36px,4.2vh,52px)] leading-[1.02]">
             Your ownership, <span className="italic">illuminated.</span>
           </h2>
-          <p className="mt-4 max-w-md text-[15px] leading-relaxed text-white/75">
-            A live shareholder register across every Aurora company — with full visibility into how your positions compare to other
+          <p className="mt-3 max-w-md text-[14px] leading-relaxed text-white/75 short:mt-2 short:text-[13px]">
+            A live shareholder register across every Aurora company, with full visibility into how your positions compare to other
             major holders.
           </p>
         </div>

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { Leaf, Scale, Sprout, Users } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Counter } from "@/components/ui/Counter";
@@ -26,7 +25,6 @@ export default function SustainabilityPage() {
   return (
     <>
       <PageHeader
-        image="/images/card-turbine.jpg"
         eyebrow="Sustainability"
         title="Responsible by design, not by disclosure."
         italicWords={["design,"]}
@@ -67,8 +65,19 @@ export default function SustainabilityPage() {
       <section className="mx-auto grid max-w-7xl gap-12 px-6 pb-24 md:px-10 md:pb-32 lg:grid-cols-[1fr_1.1fr]">
         <div className="flex flex-col">
           <SectionIntro align="stack" eyebrow="Net-zero roadmap" title="The road to 2040." italicWords={["2040."]} />
-          <Reveal className="relative mt-10 hidden min-h-[280px] flex-1 overflow-hidden rounded-[22px] lg:block">
-            <Image src="/images/card-grow.jpg" alt="" fill sizes="40vw" className="object-cover" />
+          <Reveal className="mt-10 hidden flex-1 lg:block">
+            <Card tone="lilac" className="flex h-full min-h-[280px] flex-col justify-between p-8">
+              <div className="flex items-center justify-between">
+                <span className="eyebrow text-[10px] text-plum/60">Decarbonisation trajectory</span>
+                <span className="eyebrow rounded-full bg-white/75 px-3 py-1 text-[9.5px] text-plum">SBTi validated</span>
+              </div>
+              <div>
+                <div className="display text-[72px] leading-none text-plum">−31%</div>
+                <p className="mt-3 max-w-xs text-[14px] leading-relaxed text-plum/75">
+                  Scope 1 and 2 intensity across the portfolio since 2021, while aggregate revenues grew 19% year on year.
+                </p>
+              </div>
+            </Card>
           </Reveal>
         </div>
         <div className="border-t border-ink/15">

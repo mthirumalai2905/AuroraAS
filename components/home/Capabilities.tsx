@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
+import { Landmark, Layers, Handshake, Shield, TrendingUp, Zap } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
-import { services } from "@/lib/data/site";
+import { services, type Service } from "@/lib/data/site";
 import { AnimatedText } from "@/components/ui/AnimatedText";
 import { Reveal } from "@/components/ui/Reveal";
 import { TextLink } from "@/components/ui/Button";
@@ -11,10 +11,30 @@ import { cn } from "@/lib/utils";
 
 const DURATION = 7;
 
+const icons: Record<Service["icon"], typeof Landmark> = {
+  landmark: Landmark,
+  "trending-up": TrendingUp,
+  zap: Zap,
+  layers: Layers,
+  shield: Shield,
+  handshake: Handshake,
+};
+
+const cardThemes = [
+  { bg: "from-[#231d3a] via-[#2e254b] to-[#171326]", text: "text-white", sub: "text-white/65", chip: "bg-white/10 text-white border border-white/15", badge: "bg-white/10 text-white border border-white/15", accent: "#c7bdf2" },
+  { bg: "from-[#d8d0f2] via-[#e5dff7] to-[#cfc5ee]", text: "text-plum", sub: "text-plum/70", chip: "bg-white/80 text-plum", badge: "bg-white/85 text-plum", accent: "#231d3a" },
+  { bg: "from-[#c7e2f2] via-[#d9edf8] to-[#b8d8ec]", text: "text-plum", sub: "text-plum/70", chip: "bg-white/80 text-plum", badge: "bg-white/85 text-plum", accent: "#1b3649" },
+  { bg: "from-[#1c2333] via-[#242e42] to-[#141926]", text: "text-white", sub: "text-white/65", chip: "bg-white/10 text-white border border-white/15", badge: "bg-white/10 text-white border border-white/15", accent: "#bfe3f5" },
+  { bg: "from-[#e6e1d6] via-[#efeae0] to-[#dad3c5]", text: "text-ink", sub: "text-ink-2", chip: "bg-white/80 text-ink", badge: "bg-white/85 text-ink", accent: "#231d3a" },
+  { bg: "from-[#2c223c] via-[#3a2d4f] to-[#1e1729]", text: "text-white", sub: "text-white/65", chip: "bg-white/10 text-white border border-white/15", badge: "bg-white/10 text-white border border-white/15", accent: "#d8d0f2" },
+];
+
 export function Capabilities() {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
   const s = services[active];
+  const theme = cardThemes[active % cardThemes.length];
+  const Icon = icons[s.icon];
 
   return (
     <section id="capabilities" className="mx-auto max-w-7xl px-6 py-24 md:px-10 md:py-32">
@@ -94,27 +114,49 @@ export function Capabilities() {
             <div className="relative flex-1 overflow-hidden rounded-[20px] bg-lilac-3">
               <AnimatePresence initial={false}>
                 <motion.div
-                  key={s.image}
-                  className="absolute inset-0"
-                  initial={{ opacity: 0, scale: 1.06 }}
+                  key={s.slug}
+                  className={cn("grain absolute inset-0 bg-gradient-to-br p-6 md:p-8", theme.bg, theme.text)}
+                  initial={{ opacity: 0, scale: 1.03 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+                  transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  <Image src={s.image} alt="" fill sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover" />
+                  <svg viewBox="0 0 600 320" className="pointer-events-none absolute inset-0 h-full w-full opacity-25" fill="none">
+                    <circle cx="480" cy="160" r="190" stroke={theme.accent} strokeWidth="1" />
+                    <circle cx="480" cy="160" r="130" stroke={theme.accent} strokeWidth="1" strokeDasharray="4 6" />
+                    <circle cx="480" cy="160" r="70" stroke={theme.accent} strokeWidth="1" />
+                    <line x1="0" y1="160" x2="600" y2="160" stroke={theme.accent} strokeWidth="0.75" strokeOpacity="0.5" />
+                    <line x1="480" y1="0" x2="480" y2="320" stroke={theme.accent} strokeWidth="0.75" strokeOpacity="0.5" />
+                  </svg>
+
+                  <div className="relative flex h-full flex-col justify-between">
+                    <div className="flex items-start justify-between gap-4">
+                      <span className={cn("grid h-12 w-12 place-items-center rounded-2xl backdrop-blur-md", theme.badge)}>
+                        <Icon className="h-5 w-5" strokeWidth={1.6} />
+                      </span>
+                      <div className={cn("rounded-2xl px-4 py-3 text-right backdrop-blur-md", theme.badge)}>
+                        <div className="display text-[32px] leading-none">{s.metric.value}</div>
+                        <div className={cn("eyebrow mt-1 text-[9px]", theme.sub)}>{s.metric.label}</div>
+                      </div>
+                    </div>
+
+                    <div className="my-auto max-w-sm">
+                      <div className={cn("eyebrow text-[9.5px]", theme.sub)}>
+                        Mandate 0{active + 1} · {s.title}
+                      </div>
+                      <p className="display mt-2 text-[28px] leading-[1.12] md:text-[32px]">{s.summary}</p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {s.points.map((p) => (
+                        <span key={`${s.slug}-${p}`} className={cn("rounded-full px-3.5 py-1.5 text-[12px] backdrop-blur-md", theme.chip)}>
+                          {p}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 </motion.div>
               </AnimatePresence>
-              <div className="absolute bottom-4 left-4 flex flex-wrap gap-2">
-                {s.points.map((p) => (
-                  <span key={`${s.slug}-${p}`} className="rounded-full bg-white/75 px-3 py-1.5 text-[12px] text-ink backdrop-blur-md">
-                    {p}
-                  </span>
-                ))}
-              </div>
-              <div className="absolute top-4 right-4 rounded-2xl bg-white/80 px-4 py-3 text-right backdrop-blur-md">
-                <div className="display text-[28px] leading-none">{s.metric.value}</div>
-                <div className="eyebrow mt-1 text-[9px] text-muted">{s.metric.label}</div>
-              </div>
             </div>
           </div>
         </Reveal>

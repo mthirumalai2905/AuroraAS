@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { AnimatedText } from "@/components/ui/AnimatedText";
 import { Reveal } from "@/components/ui/Reveal";
-import { categoryImage, getInsight, insights } from "@/lib/data/site";
+import { InsightCover } from "@/components/insights/InsightCover";
+import { getInsight, insights } from "@/lib/data/site";
 import { fmt } from "@/lib/format";
 
 export function generateStaticParams() {
@@ -52,8 +52,8 @@ export default async function InsightPage({ params }: { params: Promise<{ slug: 
       </div>
 
       <Reveal delay={0.35} className="mx-auto mt-12 max-w-5xl px-6">
-        <div className="relative aspect-[16/8] overflow-hidden rounded-[24px] bg-lilac-3">
-          <Image src={categoryImage[article.category]} alt="" fill priority sizes="(min-width: 1024px) 1024px, 100vw" className="object-cover" />
+        <div className="relative aspect-[16/8] overflow-hidden rounded-[24px]">
+          <InsightCover article={article} index={insights.indexOf(article)} size="banner" className="h-full w-full" />
         </div>
       </Reveal>
 

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Reveal, Stagger, StaggerItem } from "@/components/ui/Reveal";
 import { SectionIntro } from "@/components/ui/SectionIntro";
@@ -15,15 +14,13 @@ export default function AboutPage() {
   return (
     <>
       <PageHeader
-        variant="full"
-        image="/images/fjord.jpg"
         eyebrow="About Aurora AS"
         title="Patient capital, from the far north."
         italicWords={["Patient"]}
-        description="Founded in Oslo in 1998, Aurora AS has grown from a single $120M fund into one of Northern Europe's leading finance and equity groups — $48.6B under management, 380 people, five offices."
+        description="Founded in Oslo in 1998, Aurora AS has grown from a single $120M fund into one of Northern Europe's leading finance and equity groups, with $48.6B under management, 380 people and five offices."
       />
 
-      <section className="mx-auto max-w-7xl px-6 py-24 md:px-10 md:py-32">
+      <section className="mx-auto max-w-7xl px-6 py-20 md:px-10 md:py-28">
         <div className="grid gap-12 lg:grid-cols-[1fr_1fr] lg:gap-20">
           <SectionIntro align="stack" eyebrow="Our story" title="Built by operators, for the long run." italicWords={["operators,"]} />
           <Reveal delay={0.15} className="space-y-6 text-[18px] leading-[1.6] text-ink-2 lg:pt-10">
@@ -45,12 +42,20 @@ export default function AboutPage() {
 
         <Stagger className="mt-20 grid gap-3 md:grid-cols-[1.4fr_1fr]">
           <StaggerItem>
-            <div className="relative h-[420px] overflow-hidden rounded-[22px] bg-lilac-2">
-              <Image src="/images/card-stones.jpg" alt="" fill sizes="(min-width: 768px) 60vw, 100vw" className="object-cover" />
-              <p className="display absolute bottom-7 left-7 max-w-sm text-[30px] leading-tight">
-                &ldquo;We measure ourselves in decades, not quarters.&rdquo;
-              </p>
-            </div>
+            <Card tone="lilac" className="relative flex h-[420px] flex-col justify-between overflow-hidden p-8 md:p-10">
+              <div className="pointer-events-none absolute -top-24 -right-24 h-80 w-80 rounded-full bg-white/45 blur-3xl" />
+              <div className="relative flex items-center justify-between">
+                <span className="eyebrow text-[10px] text-plum/60">Founding principle · Oslo, 1998</span>
+                <span className="eyebrow rounded-full bg-white/70 px-3 py-1 text-[9.5px] text-plum">27 years</span>
+              </div>
+              <blockquote className="display relative max-w-lg text-[36px] leading-[1.08] text-plum md:text-[46px]">
+                &ldquo;We measure ourselves in <span className="italic">decades</span>, not quarters.&rdquo;
+              </blockquote>
+              <div className="relative flex items-center justify-between border-t border-plum/12 pt-5 text-[13px] text-plum/70">
+                <span>Aurora Partnership Charter</span>
+                <span className="font-mono text-[11px] uppercase tracking-[0.12em]">Article I</span>
+              </div>
+            </Card>
           </StaggerItem>
           <StaggerItem>
             <Card tone="plum" className="flex h-[420px] flex-col justify-between p-8">
@@ -100,7 +105,7 @@ export default function AboutPage() {
           eyebrow="Leadership"
           title="The people behind the capital."
           italicWords={["people"]}
-          description="Our partnership blends investors, former CEOs, engineers and scientists — united by a commitment to stewardship."
+          description="Our partnership blends investors, former CEOs, engineers and scientists, united by a commitment to stewardship."
         />
         <Stagger className="mt-14 grid gap-x-4 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
           {team.map((m, i) => (

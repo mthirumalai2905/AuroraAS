@@ -1,5 +1,6 @@
 import type { Company } from "@/lib/data/companies";
 import { rivalIds, type Dividend, type Holder, type HolderId, type RegisterRow, type Transaction } from "@/lib/data/register";
+import { SHARES_OUTSTANDING, TRANSFER_COLUMNS, type Shareholder } from "@/lib/data/aurora-equity";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { fmt } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -179,7 +180,7 @@ export function matrixColumns(holders: Holder[]): Column<RegisterRow>[] {
     accent: h.color,
     value: (r) => r.pct[h.id],
     fill: (r) => (r.pct[h.id] > 0 ? { color: h.color, opacity: Math.min(0.5, (r.pct[h.id] / max) * 0.5) } : null),
-    render: (r) => (r.pct[h.id] === 0 ? <span className="text-neutral-300">—</span> : fmt.pct(r.pct[h.id])),
+    render: (r) => (r.pct[h.id] === 0 ? <span className="text-neutral-300">-</span> : fmt.pct(r.pct[h.id])),
     total: (rows) => <span className="text-neutral-500">avg {fmt.pct(rows.reduce((s, r) => s + r.pct[h.id], 0) / rows.length)}</span>,
   });
 
@@ -305,6 +306,171 @@ export function transactionColumns(): Column<Transaction>[] {
   ];
 }
 
+export const holderKindStyle: Record<Shareholder["kind"], { label: string; color: string; pill: string }> = {
+  company: { label: "Company", color: "#5e5ce6", pill: "bg-[#5e5ce6]/12 text-[#4b49c4]" },
+  person: { label: "Private", color: "#ff9f0a", pill: "bg-[#ff9f0a]/15 text-[#b25000]" },
+};
+
+export const formatOrgNr = (n: string) => n.replace(/^(\d{3})(\d{3})(\d{3})$/, "$1 $2 $3");
+
+export function HolderCell({ h, sub }: { h: Shareholder; sub?: string }) {
+  const k = holderKindStyle[h.kind];
+  return (
+    <span className="flex min-w-0 items-center gap-2.5">
+      <span
+        className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-[10px] font-semibold"
+        style={{ background: `${k.color}1f`, color: k.color }}
+      >
+        {h.name.replace(/[^\p{L}\s]/gu, "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase()}
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate font-medium text-neutral-900">{h.name}</span>
+        {sub && <span className="-mt-0.5 block truncate text-[11px] text-neutral-400">{sub}</span>}
+      </span>
+    </span>
+  );
+}
+
+export function shareholderColumns(): Column<Shareholder>[] {
+  return [
+    {
+      key: "stake_pct",
+      title: "Stake %",
+      width: 110,
+      kind: "pct",
+      align: "right",
+      accent: "#0a84ff",
+      tint: "bg-[#0a84ff]/[0.035]",
+      value: (h) => h.pct,
+      render: (h) => <span className="font-semibold text-neutral-900">{h.stakeText}</span>,
+      formula: (_, n, L) => `=${L("num_shares")}${n} / ${SHARES_OUTSTANDING}`,
+      total: (rows) => fmt.pct(rows.reduce((s, h) => s + h.pct, 0)),
+    },
+    {
+      key: "num_shares",
+      title: "Num Shares",
+      width: 130,
+      kind: "int",
+      align: "right",
+      value: (h) => h.shares,
+      render: (h) => <span className="font-medium text-neutral-900">{h.shares}</span>,
+      formula: (h) => `=HOLDING("AEQ", "${h.name}")`,
+      total: (rows) => String(rows.reduce((s, h) => s + h.shares, 0)),
+    },
+    {
+      key: "name",
+      title: "Name",
+      width: 240,
+      kind: "text",
+      value: (h) => h.name,
+      render: (h) => <HolderCell h={h} />,
+      total: (rows) => <span className="text-neutral-500">{rows.length} rows</span>,
+    },
+    {
+      key: "first_name",
+      title: "First name / Contact",
+      width: 200,
+      kind: "text",
+      value: (h) => h.firstName,
+      render: (h) => (h.firstName ? <span className="font-medium text-neutral-800">{h.firstName}</span> : <span className="text-neutral-300">-</span>),
+    },
+    {
+      key: "investor_id",
+      title: "Investor ID",
+      width: 140,
+      kind: "text",
+      value: (h) => h.investorId,
+      render: (h) => <span className="font-mono text-[12px] text-neutral-700">{h.investorId}</span>,
+    },
+    {
+      key: "address",
+      title: "Address",
+      width: 230,
+      kind: "text",
+      value: (h) => h.address,
+      render: (h) => h.address || <span className="text-neutral-300">-</span>,
+    },
+    {
+      key: "address2",
+      title: "Address 2",
+      width: 170,
+      kind: "text",
+      value: (h) => h.address2,
+      render: (h) => h.address2 || <span className="text-neutral-300">-</span>,
+    },
+    {
+      key: "postal",
+      title: "Postal code",
+      width: 110,
+      kind: "text",
+      value: (h) => h.postalCode,
+      render: (h) => h.postalCode || <span className="text-neutral-300">-</span>,
+    },
+    {
+      key: "city",
+      title: "City",
+      width: 175,
+      kind: "text",
+      value: (h) => h.city,
+      render: (h) => h.city || <span className="text-neutral-300">-</span>,
+    },
+    {
+      key: "country",
+      title: "Country (post)",
+      width: 145,
+      kind: "text",
+      value: (h) => h.country,
+      render: (h) => h.country || <span className="text-neutral-300">-</span>,
+    },
+    {
+      key: "email",
+      title: "E-mail",
+      width: 250,
+      kind: "text",
+      value: (h) => h.email,
+      render: (h) => (
+        <a href={`mailto:${h.email}`} onMouseDown={(e) => e.stopPropagation()} className="truncate text-[#0a6bd6] hover:underline">
+          {h.email}
+        </a>
+      ),
+    },
+    {
+      key: "opening_shares",
+      title: "Opening shares",
+      width: 130,
+      kind: "int",
+      align: "right",
+      tint: "bg-[#c9daf8]/20",
+      value: (h) => h.openingShares ?? "",
+      render: (h) => (h.openingShares !== null ? <span className="tabular-nums text-neutral-800">{h.openingShares}</span> : <span className="text-neutral-300">-</span>),
+      total: (rows) => String(rows.reduce((s, h) => s + (h.openingShares ?? 0), 0)),
+    },
+    ...TRANSFER_COLUMNS.map((tc): Column<Shareholder> => ({
+      key: tc.key,
+      title: `${tc.title} (${tc.group})`,
+      width: 145,
+      kind: "int",
+      align: "right",
+      accent: tc.group === "1 oktober" ? "#e06666" : "#6aa84f",
+      value: (h) => h.transfers[tc.key] ?? "",
+      fill: (h) => {
+        const v = h.transfers[tc.key];
+        if (!v) return null;
+        return h.rank === 1 ? { color: "#e06666", opacity: 0.22 } : { color: "#6aa84f", opacity: 0.25 };
+      },
+      render: (h) => {
+        const v = h.transfers[tc.key];
+        if (v === undefined) return <span className="text-neutral-300">-</span>;
+        return <span className={cn("font-semibold tabular-nums", h.rank === 1 ? "text-[#a61c1c]" : "text-[#1f5f1b]")}>{v}</span>;
+      },
+      total: (rows) => {
+        const buyers = rows.filter((r) => r.rank !== 1).reduce((s, r) => s + (r.transfers[tc.key] ?? 0), 0);
+        return buyers ? String(buyers) : "";
+      },
+    })),
+  ];
+}
+
 export function dividendColumns(): Column<Dividend>[] {
   return [
     companyColumn<Dividend>((d) => d.company, { sub: (d) => d.company.ticker }),
@@ -330,7 +496,7 @@ export function dividendColumns(): Column<Dividend>[] {
       align: "right",
       value: (d) => d.tax,
       formula: (_, n, L) => `=${L("gross")}${n} * IF(DOMICILE()="NO", 0, 15%)`,
-      render: (d) => <span className={d.tax ? "text-[#d70015]" : "text-neutral-300"}>{d.tax ? fmt.usd(-d.tax) : "—"}</span>,
+      render: (d) => <span className={d.tax ? "text-[#d70015]" : "text-neutral-300"}>{d.tax ? fmt.usd(-d.tax) : "-"}</span>,
       total: (rows) => fmt.usd(-rows.reduce((s, d) => s + d.tax, 0)),
     },
     {

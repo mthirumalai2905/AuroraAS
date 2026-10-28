@@ -23,7 +23,7 @@ export type Service = {
   description: string;
   points: string[];
   metric: { value: string; label: string };
-  image: string;
+  image?: string;
 };
 
 export const services: Service[] = [
@@ -40,13 +40,12 @@ export const services: Service[] = [
   },
   {
     slug: "growth-equity",
-    image: "/images/card-grow.jpg",
     title: "Growth Equity",
     icon: "trending-up",
     summary: "Minority capital for founders scaling globally.",
     description:
       "Flexible minority growth capital for technology, healthcare and fintech companies with proven product-market fit and a path to international scale.",
-    points: ["$25M–$250M cheques", "Board-level partnership", "Go-to-market acceleration"],
+    points: ["$25M to $250M cheques", "Board-level partnership", "Go-to-market acceleration"],
     metric: { value: "34", label: "Growth investments" },
   },
   {
@@ -89,7 +88,7 @@ export const services: Service[] = [
     icon: "handshake",
     summary: "Independent advice on transactions that define companies.",
     description:
-      "Our advisory team supports boards on mergers, acquisitions, capital raises and restructurings — independent of our investment activities.",
+      "Our advisory team supports boards on mergers, acquisitions, capital raises and restructurings, independent of our investment activities.",
     points: ["Sell-side & buy-side M&A", "Equity & debt capital markets", "Strategic reviews"],
     metric: { value: "$62B", label: "Transactions advised" },
   },
@@ -110,13 +109,13 @@ export const approachSteps = [
   },
   {
     title: "Realise with care",
-    body: "We exit when businesses are ready — to strategic owners, public markets or long-term holders — never just when the fund clock says so.",
+    body: "We exit when businesses are ready, whether to strategic owners, public markets or long-term holders. Never just because the fund clock says so.",
   },
 ];
 
 export const values = [
   { title: "Patient capital", body: "We measure success in decades, not quarters, and structure our funds to match." },
-  { title: "Radical transparency", body: "Stakeholders see what we see — real-time registers, open reporting, no surprises." },
+  { title: "Radical transparency", body: "Stakeholders see what we see: real-time registers, open reporting, no surprises." },
   { title: "Operator mindset", body: "We roll up our sleeves. Half of our partners have run companies themselves." },
   { title: "Responsible by design", body: "Sustainability is underwritten, not appended. It is how durable value is built." },
 ];
@@ -127,7 +126,7 @@ export const timeline = [
   { year: "2011", title: "Infrastructure platform", body: "Launch of our dedicated energy and infrastructure strategy." },
   { year: "2016", title: "London & Singapore", body: "International expansion to serve a global LP base across 24 countries." },
   { year: "2021", title: "Net-zero commitment", body: "Portfolio-wide science-based targets and a net-zero 2040 pledge." },
-  { year: "2026", title: "Fund VI — $8.5B", body: "Our largest flagship fund, oversubscribed and closed at hard cap." },
+  { year: "2026", title: "Fund VI closes at $8.5B", body: "Our largest flagship fund, oversubscribed and closed at hard cap." },
 ];
 
 export const team = [
@@ -194,14 +193,6 @@ export type Insight = {
   body: string[];
 };
 
-export const categoryImage: Record<Insight["category"], string> = {
-  "Market outlook": "/images/fjord.jpg",
-  "Energy transition": "/images/card-turbine.jpg",
-  Technology: "/images/card-prism.jpg",
-  "Private markets": "/images/card-institution.jpg",
-  Sustainability: "/images/card-grow.jpg",
-};
-
 export const insights: Insight[] = [
   {
     slug: "nordic-private-markets-outlook-2027",
@@ -225,7 +216,7 @@ export const insights: Insight[] = [
     date: "2026-09-28",
     readTime: 6,
     author: "James Okafor",
-    excerpt: "Renewables are now cheap. Moving and storing their power is the bottleneck — and the opportunity.",
+    excerpt: "Renewables are now cheap. Moving and storing their power is the bottleneck, and the opportunity.",
     body: [
       "Europe added record renewable capacity last year, yet curtailment rates have risen across several markets. The constraint is no longer generation; it is flexibility.",
       "Grid-scale storage, interconnectors and demand-response platforms are emerging as an infrastructure asset class with contracted, inflation-linked cash flows.",
@@ -253,7 +244,7 @@ export const insights: Insight[] = [
     date: "2026-08-14",
     readTime: 5,
     author: "Ingvild Aas",
-    excerpt: "Continuation vehicles can align everyone — if governance, pricing and choice are handled with care.",
+    excerpt: "Continuation vehicles can align everyone, if governance, pricing and choice are handled with care.",
     body: [
       "Continuation funds have become a mainstream liquidity tool. Used well, they let investors stay invested in trophy assets while offering liquidity to those who need it.",
       "We insist on three principles: a competitive price discovery process, a genuine choice for every investor, and GP commitment that rolls over in full.",
@@ -282,7 +273,7 @@ export const insights: Insight[] = [
     excerpt: "Fragmented outpatient markets and digital care create a rare buy-and-build setup across Northern Europe.",
     body: [
       "Outpatient care in Northern Europe remains highly fragmented, with the top five operators holding less than 15% market share in most specialties.",
-      "Combining clinic networks with digital front doors creates better patient outcomes and superior unit economics — the thesis behind Halcyon Health.",
+      "Combining clinic networks with digital front doors creates better patient outcomes and superior unit economics. That is the thesis behind Halcyon Health.",
     ],
   },
 ];

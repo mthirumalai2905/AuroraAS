@@ -8,7 +8,6 @@ export default function InsightsPage() {
   return (
     <>
       <PageHeader
-        image="/images/hero-sky.jpg"
         eyebrow="Insights"
         title="Research, outlooks and ideas."
         italicWords={["ideas."]}

@@ -128,7 +128,7 @@ export function AskAurora() {
             className="absolute inset-x-0 top-[64px] z-20 overflow-hidden rounded-[22px] border border-white/15 bg-night/80 p-2 text-left shadow-2xl backdrop-blur-2xl"
           >
             {results.length === 0 ? (
-              <p className="px-4 py-5 text-[14px] text-white/60">No matches yet — try “energy”, “results” or “careers”.</p>
+              <p className="px-4 py-5 text-[14px] text-white/60">No matches yet. Try “energy”, “results” or “careers”.</p>
             ) : (
               results.map((r, i) => (
                 <button

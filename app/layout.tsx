@@ -14,7 +14,7 @@ const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", dis
 
 export const metadata: Metadata = {
   title: {
-    default: "Aurora AS — Capital, illuminated",
+    default: "Aurora AS | Capital, illuminated",
     template: "%s · Aurora AS",
   },
   description:

@@ -31,7 +31,6 @@ export default function InvestorsPage() {
   return (
     <>
       <PageHeader
-        image="/images/card-stones.jpg"
         eyebrow="Investor relations"
         title="Clear numbers. Open books."
         italicWords={["Open"]}

@@ -10,13 +10,19 @@ import { SectionIntro } from "@/components/ui/SectionIntro";
 
 const featured = activeCompanies.slice(0, 7);
 
+// Tilt per row: starts leaning left, then alternates right/left. Magnitudes are all
+// different so each card looks distinct from the one before and the one before that.
+const tilts = [-8, 6, -4, 9, -6, 3, -10];
+const bounce = { type: "spring", stiffness: 320, damping: 14, mass: 0.8 } as const;
+
 export function PortfolioList() {
   const [hover, setHover] = useState<number | null>(null);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
-  const sx = useSpring(x, { stiffness: 260, damping: 28 });
-  const sy = useSpring(y, { stiffness: 260, damping: 28 });
+  const sx = useSpring(x, { stiffness: 260, damping: 22 });
+  const sy = useSpring(y, { stiffness: 260, damping: 22 });
   const c = hover !== null ? featured[hover] : null;
+  const tilt = hover !== null ? tilts[hover % tilts.length] : 0;
 
   return (
     <section className="mx-auto max-w-7xl px-6 py-24 md:px-10 md:py-32">
@@ -60,16 +66,18 @@ export function PortfolioList() {
             {c && (
               <motion.div
                 key="preview"
-                initial={{ opacity: 0, scale: 0.85 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.85 }}
-                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                initial={{ opacity: 0, scale: 0.7, rotate: tilt * 2.5, y: 24 }}
+                animate={{ opacity: 1, scale: 1, rotate: tilt, y: 0 }}
+                exit={{ opacity: 0, scale: 0.8, rotate: tilt * 1.5, y: 12, transition: { duration: 0.2 } }}
+                transition={{ ...bounce, opacity: { duration: 0.2 } }}
+                style={{ transformOrigin: "50% 100%" }}
                 className="-translate-x-1/2 -translate-y-[115%]"
               >
                 <motion.div
                   layout
                   className="w-[260px] overflow-hidden rounded-[18px] p-5 text-white shadow-[0_30px_60px_-20px_rgba(35,29,58,0.5)]"
                   animate={{ background: `linear-gradient(135deg, ${c.colors[0]}, ${c.colors[1]})` }}
+                  transition={{ duration: 0.4 }}
                 >
                   <div className="eyebrow text-[9px] text-white/70">
                     {c.ticker} · {c.stage}

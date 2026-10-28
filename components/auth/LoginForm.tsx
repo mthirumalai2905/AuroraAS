@@ -43,12 +43,12 @@ export function LoginForm({ demos, next }: { demos: Demo[]; next?: string }) {
   return (
     <motion.div animate={shake} className="w-full max-w-[400px]">
       <span className="eyebrow text-[10px] text-muted">Stakeholder portal</span>
-      <h1 className="display mt-4 text-[52px] leading-none">
+      <h1 className="display mt-3 text-[44px] leading-none short:mt-2 short:text-[38px]">
         Welcome <span className="italic">back</span>
       </h1>
-      <p className="mt-3 text-[15px] text-ink-2">Sign in to your shareholder register.</p>
+      <p className="mt-2 text-[14px] text-ink-2 short:mt-1.5">Sign in to your shareholder register.</p>
 
-      <form onSubmit={submit} className="mt-10 space-y-3">
+      <form onSubmit={submit} className="mt-7 space-y-2.5 short:mt-5 short:space-y-2">
         <FloatingInput label="Email address" type="email" value={email} onChange={setEmail} autoComplete="email" />
         <div className="relative">
           <FloatingInput label="Password" type={show ? "text" : "password"} value={password} onChange={setPassword} autoComplete="current-password" />
@@ -86,7 +86,7 @@ export function LoginForm({ demos, next }: { demos: Demo[]; next?: string }) {
         <button
           disabled={status !== "idle"}
           className={cn(
-            "group relative flex h-13 w-full items-center justify-center gap-2 overflow-hidden rounded-full py-3.5 font-mono text-[11.5px] tracking-[0.1em] uppercase transition-all duration-500 active:scale-[0.98]",
+            "group relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-full font-mono text-[11.5px] tracking-[0.1em] uppercase transition-all duration-500 active:scale-[0.98] short:h-11",
             status === "success" ? "bg-[#30a14e] text-white" : "bg-plum text-white hover:bg-plum-2",
           )}
         >
@@ -110,11 +110,11 @@ export function LoginForm({ demos, next }: { demos: Demo[]; next?: string }) {
         </button>
       </form>
 
-      <div className="mt-10">
+      <div className="mt-7 short:mt-5">
         <div className="eyebrow flex items-center gap-3 text-[9.5px] text-muted">
           <span className="h-px flex-1 bg-line" /> Demo accounts <span className="h-px flex-1 bg-line" />
         </div>
-        <div className="mt-4 grid gap-2">
+        <div className="mt-3 grid gap-1.5 short:mt-2.5">
           {demos.map((d) => (
             <button
               key={d.email}
@@ -125,11 +125,11 @@ export function LoginForm({ demos, next }: { demos: Demo[]; next?: string }) {
                 setError(null);
               }}
               className={cn(
-                "flex items-center gap-3 rounded-[16px] border p-3 text-left transition-all duration-300",
+                "flex items-center gap-3 rounded-[14px] border p-2.5 text-left transition-all duration-300 short:p-2",
                 email === d.email ? "border-plum/30 bg-white" : "border-line hover:bg-white",
               )}
             >
-              <span className="display grid h-9 w-9 place-items-center rounded-full bg-lilac-3 text-[15px] italic text-plum">
+              <span className="display grid h-8 w-8 place-items-center rounded-full bg-lilac-3 text-[14px] italic text-plum">
                 {d.name
                   .split(" ")
                   .map((n) => n[0])
@@ -145,7 +145,7 @@ export function LoginForm({ demos, next }: { demos: Demo[]; next?: string }) {
         </div>
       </div>
 
-      <p className="mt-10 flex items-center gap-2 text-[12px] text-muted">
+      <p className="mt-6 flex items-center gap-2 text-[12px] text-muted short:mt-4">
         <ShieldCheck className="h-4 w-4" /> Protected with 256-bit encryption and BankID-ready MFA.
       </p>
     </motion.div>
@@ -174,9 +174,9 @@ function FloatingInput({
         autoComplete={autoComplete}
         onChange={(e) => onChange(e.target.value)}
         placeholder=" "
-        className="peer h-15 w-full rounded-[16px] border border-line bg-white px-4 pt-5 pb-1.5 text-[15px] transition-all duration-300 focus:border-plum/40 focus:ring-4 focus:ring-lilac-3 focus:outline-none"
+        className="peer h-14 w-full rounded-[14px] border border-line bg-white px-4 pt-5 pb-1.5 text-[15px] transition-all duration-300 focus:border-plum/40 focus:ring-4 focus:ring-lilac-3 focus:outline-none short:h-[52px]"
       />
-      <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[15px] text-muted transition-all duration-300 ease-apple peer-focus:top-4 peer-focus:text-[11px] peer-focus:text-plum peer-[:not(:placeholder-shown)]:top-4 peer-[:not(:placeholder-shown)]:text-[11px]">
+      <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[15px] text-muted transition-all duration-300 ease-apple peer-focus:top-4 peer-focus:text-[11px] peer-focus:text-plum peer-[:not(:placeholder-shown)]:top-4 peer-[:not(:placeholder-shown)]:text-[11px] short:peer-focus:top-3.5 short:peer-[:not(:placeholder-shown)]:top-3.5">
         {label}
       </span>
     </label>
