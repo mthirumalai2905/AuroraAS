@@ -20,14 +20,14 @@ export function Intro() {
     <section className="mx-auto max-w-7xl px-6 pt-24 pb-10 md:px-10 md:pt-36">
       <div className="grid gap-10 md:grid-cols-[1.3fr_1fr] md:items-start">
         <div>
-          <AnimatedText as="h2" inView text="What is Aurora AS?" className="display text-[48px] md:text-[72px]" />
+          <AnimatedText as="h2" inView text="What is Aurora Equity?" className="display text-[48px] md:text-[72px]" />
           <Reveal delay={0.2} className="mt-6">
             <Button href="/about" size="sm">Our story</Button>
           </Reveal>
         </div>
         <Reveal delay={0.1}>
           <p className="max-w-md text-[19px] leading-[1.5] text-ink-2 md:mt-3">
-            Aurora AS is a Nordic investment group that owns and grows businesses for the long term, combining private equity
+            Aurora Equity is a Nordic investment group that owns and grows businesses for the long term, combining private equity
             discipline with the patience of a family office.
           </p>
         </Reveal>

@@ -17,7 +17,7 @@ export function Logo({ className }: { className?: string }) {
       <LogoMark />
       <span className="flex items-start gap-1">
         <span className="display text-[24px] leading-none tracking-[-0.01em]">Aurora</span>
-        <span className="eyebrow mt-0.5 text-[9px] opacity-60">AS</span>
+        <span className="eyebrow mt-0.5 text-[9px] opacity-60">Equity</span>
       </span>
     </span>
   );

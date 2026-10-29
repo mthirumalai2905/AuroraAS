@@ -88,7 +88,7 @@ export function Footer() {
           <div className="mt-20 flex flex-col justify-between gap-4 border-t border-white/10 pt-6 text-[12px] text-white/40 md:flex-row md:items-center">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
               <Logo className="text-white/80" />
-              <p>© 2026 Aurora AS · Org. no. 912 345 678 · Authorised by Finanstilsynet</p>
+              <p>© 2026 Aurora Equity · Org. no. 912 345 678 · Authorised by Finanstilsynet</p>
             </div>
             <div className="flex gap-6">
               <Link href="/legal" className="hover:text-white">Privacy</Link>

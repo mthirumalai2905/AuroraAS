@@ -14,10 +14,10 @@ export default function AboutPage() {
   return (
     <>
       <PageHeader
-        eyebrow="About Aurora AS"
+        eyebrow="About Aurora Equity"
         title="Patient capital, from the far north."
         italicWords={["Patient"]}
-        description="Founded in Oslo in 1998, Aurora AS has grown from a single $120M fund into one of Northern Europe's leading finance and equity groups, with $48.6B under management, 380 people and five offices."
+        description="Founded in Oslo in 1998, Aurora Equity has grown from a single $120M fund into one of Northern Europe's leading finance and equity groups, with $48.6B under management, 380 people and five offices."
       />
 
       <section className="mx-auto max-w-7xl px-6 py-20 md:px-10 md:py-28">

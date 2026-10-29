@@ -121,7 +121,7 @@ export const values = [
 ];
 
 export const timeline = [
-  { year: "1998", title: "Founded in Oslo", body: "Aurora AS is founded by three partners with a $120M first fund." },
+  { year: "1998", title: "Founded in Oslo", body: "Aurora Equity is founded by three partners with a $120M first fund." },
   { year: "2004", title: "Nordic expansion", body: "Offices open in Stockholm and Copenhagen. Fund II closes at $650M." },
   { year: "2011", title: "Infrastructure platform", body: "Launch of our dedicated energy and infrastructure strategy." },
   { year: "2016", title: "London & Singapore", body: "International expansion to serve a global LP base across 24 countries." },

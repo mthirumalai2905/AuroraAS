@@ -8,7 +8,7 @@ const sections = [
     id: "privacy",
     title: "Privacy policy",
     body: [
-      "Aurora AS processes personal data in accordance with the EU General Data Protection Regulation (GDPR) and the Norwegian Personal Data Act.",
+      "Aurora Equity processes personal data in accordance with the EU General Data Protection Regulation (GDPR) and the Norwegian Personal Data Act.",
       "We collect only the data necessary to provide our services, manage investor relationships and comply with anti-money-laundering obligations. You may request access, rectification or erasure of your data at any time by contacting privacy@aurora-as.com.",
     ],
   },
@@ -31,7 +31,7 @@ const sections = [
     id: "regulatory",
     title: "Regulatory information",
     body: [
-      "Aurora AS (org. no. 912 345 678) is authorised as an alternative investment fund manager by Finanstilsynet, the Financial Supervisory Authority of Norway.",
+      "Aurora Equity (org. no. 912 345 678) is authorised as an alternative investment fund manager by Finanstilsynet, the Financial Supervisory Authority of Norway.",
     ],
   },
 ];

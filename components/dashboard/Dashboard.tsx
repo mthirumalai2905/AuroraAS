@@ -573,7 +573,7 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
     <div className="fixed inset-0 flex flex-col bg-[#f5f5f7] text-neutral-900 [color-scheme:light] selection:bg-[#0a84ff]/20 selection:text-neutral-900">
       {/* App bar */}
       <header className="relative z-30 flex h-14 shrink-0 items-center gap-3 border-b border-black/[0.06] bg-white/75 px-3 backdrop-blur-xl md:px-4">
-        <Link href="/" className="flex items-center gap-2 rounded-lg p-1 transition-colors hover:bg-black/[0.04]" aria-label="Aurora AS website">
+        <Link href="/" className="flex items-center gap-2 rounded-lg p-1 transition-colors hover:bg-black/[0.04]" aria-label="Aurora Equity website">
           <LogoMark className="h-6 w-6" />
         </Link>
         <div className="flex min-w-0 items-center gap-2.5">

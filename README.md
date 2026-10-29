@@ -1,6 +1,6 @@
-# AuroraAS
+# Aurora Equity
 
-Marketing site and stakeholder portal for Aurora AS, a Nordic finance and equity group.
+Marketing site and stakeholder portal for Aurora Equity, a Nordic finance and equity group.
 
 Built with Next.js 16 (App Router), React 19, Tailwind CSS v4, Motion and Lenis.
 

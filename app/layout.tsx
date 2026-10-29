@@ -15,11 +15,11 @@ const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", dis
 
 export const metadata: Metadata = {
   title: {
-    default: "Aurora AS | Capital, illuminated",
-    template: "%s · Aurora AS",
+    default: "Aurora Equity | Capital, illuminated",
+    template: "%s · Aurora Equity",
   },
   description:
-    "Aurora AS is a Nordic finance and equity group building enduring companies across energy, technology, healthcare and infrastructure.",
+    "Aurora Equity is a Nordic finance and equity group building enduring companies across energy, technology, healthcare and infrastructure.",
 };
 
 export const viewport: Viewport = {

@@ -48,7 +48,7 @@ export function Navbar() {
             scrolled && "max-w-6xl"
           )}
         >
-          <Link href="/" aria-label="Aurora AS home" className="shrink-0">
+          <Link href="/" aria-label="Aurora Equity home" className="shrink-0">
             <Logo />
           </Link>
 

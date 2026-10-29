@@ -10,7 +10,7 @@ export const rivalIds: HolderId[] = ["northwind", "blackfjord", "sterling", "kro
 export function getHolders(stakeholderEntity: string): Holder[] {
   return [
     { id: "you", name: stakeholderEntity, short: "You", color: "#0a84ff" },
-    { id: "aurora", name: "Aurora AS (anchor)", short: "Aurora AS", color: "#30d158" },
+    { id: "aurora", name: "Aurora Equity (anchor)", short: "Aurora Equity", color: "#30d158" },
     { id: "northwind", name: "Northwind Capital", short: "Northwind", color: "#ff9f0a" },
     { id: "blackfjord", name: "Blackfjord Partners", short: "Blackfjord", color: "#bf5af2" },
     { id: "sterling", name: "Sterling & Vale", short: "Sterling & Vale", color: "#ff375f" },

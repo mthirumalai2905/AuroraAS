@@ -34,7 +34,7 @@ export default function InvestorsPage() {
         eyebrow="Investor relations"
         title="Clear numbers. Open books."
         italicWords={["Open"]}
-        description="Aurora AS is listed on Oslo Børs. Here you will find our financial results, fund performance, reports, governance and upcoming events."
+        description="Aurora Equity is listed on Oslo Børs. Here you will find our financial results, fund performance, reports, governance and upcoming events."
       >
         <div className="mt-8 flex flex-wrap gap-3">
           <Button href="#reports">Latest reports</Button>
@@ -153,7 +153,7 @@ export default function InvestorsPage() {
 
       <section className="mx-auto grid max-w-7xl gap-16 px-6 pb-24 md:px-10 md:pb-32 lg:grid-cols-2">
         <div>
-          <SectionIntro align="stack" eyebrow="The share" title="Aurora AS on Oslo Børs." italicWords={["Oslo", "Børs."]} />
+          <SectionIntro align="stack" eyebrow="The share" title="Aurora Equity on Oslo Børs." italicWords={["Oslo", "Børs."]} />
           <Reveal className="mt-10 grid grid-cols-2 gap-px overflow-hidden rounded-[22px] bg-line">
             {shareInfo.map((s) => (
               <div key={s.label} className="bg-white p-6">

@@ -59,7 +59,7 @@ export function HomeHero() {
           />
 
           <FadeUp delay={0.7} className="mt-6 max-w-[440px] text-[15px] leading-relaxed">
-            <p className="font-medium text-white">Aurora AS is a Nordic finance and equity group.</p>
+            <p className="font-medium text-white">Aurora Equity is a Nordic finance and equity group.</p>
             <p className="text-white/70">
               We invest in, build and steward thirteen companies across energy, technology, healthcare and infrastructure.
             </p>
