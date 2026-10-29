@@ -31,17 +31,19 @@ import { CompanyDrawer } from "@/components/dashboard/CompanyDrawer";
 import { ShareholderDrawer } from "@/components/dashboard/ShareholderDrawer";
 import { RegistrarChatDrawer, type StagedAction } from "@/components/dashboard/RegistrarChatDrawer";
 import { SheetGrid, formatKind, toCSV, type Stats } from "@/components/dashboard/SheetGrid";
-import { dividendColumns, holdingsColumns, matrixColumns, shareholderColumns, transactionColumns, type Units } from "@/components/dashboard/sheets";
+import { dividendColumns, holdingsColumns, ledgerSheetColumns, matrixColumns, shareholderColumns, transactionColumns, type Units } from "@/components/dashboard/sheets";
 import type { Holder, Register, RegisterRow } from "@/lib/data/register";
 import type { AuroraEquityRegister, Shareholder, ShareholderKind, TransferKey } from "@/lib/data/aurora-equity";
 import { SHARES_OUTSTANDING, TRANSFER_COLUMNS } from "@/lib/data/aurora-equity";
+import { buildLedgerTransactions, computeAuditHash, type LedgerTransaction } from "@/lib/data/ledger";
 import { canWriteDashboard, type Stakeholder } from "@/lib/auth";
 import { sectors, type Company } from "@/lib/data/companies";
 import { fmt } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const SHEETS = [
-  { id: "register", label: "Aurora Equity AS" },
+  { id: "register", label: "Aurora Equity" },
+  { id: "ledger", label: "Trade Ledger" },
   { id: "holdings", label: "Holdings" },
   { id: "matrix", label: "Competitor matrix" },
   { id: "transactions", label: "Transactions" },
@@ -71,6 +73,8 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
   const [stats, setStats] = useState<Stats | null>(null);
   const [toast, setToast] = useState<{ id: number; msg: string } | null>(null);
   const [shareholdersState, setShareholdersState] = useState<Shareholder[]>(capTable.shareholders);
+  const [liveTransactions, setLiveTransactions] = useState<LedgerTransaction[]>([]);
+  const [showBatchCols, setShowBatchCols] = useState(false);
   const [writeModalOpen, setWriteModalOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [newHolder, setNewHolder] = useState({
@@ -181,13 +185,53 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
     );
   }, [liveCapTable.shareholders, kindFilter, query]);
 
+  const allLedgerRows = useMemo(
+    () => buildLedgerTransactions(liveCapTable.shareholders, liveTransactions),
+    [liveCapTable.shareholders, liveTransactions]
+  );
+
+  const ledgerRows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return allLedgerRows;
+    return allLedgerRows.filter((tx) =>
+      `${tx.id} ${tx.dateLabel} ${tx.batchGroup} ${tx.sellerName} ${tx.buyerName} ${tx.shares} ${tx.auditHash}`
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [allLedgerRows, query]);
+
+  const selectHolderById = useCallback(
+    (holderId: string) => {
+      const found = liveCapTable.shareholders.find((h) => h.id === holderId);
+      if (found) setHolderDrawer(found);
+    },
+    [liveCapTable.shareholders]
+  );
+
   const hCols = useMemo(() => holdingsColumns(holders, units), [holders, units]);
   const mCols = useMemo(() => matrixColumns(holders), [holders]);
   const tCols = useMemo(() => transactionColumns(), []);
   const dCols = useMemo(() => dividendColumns(), []);
-  const sCols = useMemo(() => shareholderColumns(), []);
+  const lCols = useMemo(() => ledgerSheetColumns(selectHolderById), [selectHolderById]);
+  const sCols = useMemo(
+    () =>
+      shareholderColumns({
+        showBatchColumns: showBatchCols,
+        allShareholders: liveCapTable.shareholders,
+        liveTransactions,
+        onInspectHolder: setHolderDrawer,
+      }),
+    [showBatchCols, liveCapTable.shareholders, liveTransactions]
+  );
 
-  const counts: Record<SheetId, number> = { register: holdersRows.length, holdings: rows.length, matrix: rows.length, transactions: txs.length, dividends: divs.length };
+  const counts: Record<SheetId, number> = {
+    register: holdersRows.length,
+    ledger: ledgerRows.length,
+    holdings: rows.length,
+    matrix: rows.length,
+    transactions: txs.length,
+    dividends: divs.length,
+  };
 
   function switchSheet(id: SheetId) {
     const from = SHEETS.findIndex((s) => s.id === sheet);
@@ -200,13 +244,15 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
     const csv =
       sheet === "register"
         ? toCSV(sCols, holdersRows)
-        : sheet === "holdings"
-          ? toCSV(hCols, rows)
-          : sheet === "matrix"
-            ? toCSV(mCols, rows)
-            : sheet === "transactions"
-              ? toCSV(tCols, txs)
-              : toCSV(dCols, divs);
+        : sheet === "ledger"
+          ? toCSV(lCols, ledgerRows)
+          : sheet === "holdings"
+            ? toCSV(hCols, rows)
+            : sheet === "matrix"
+              ? toCSV(mCols, rows)
+              : sheet === "transactions"
+                ? toCSV(tCols, txs)
+                : toCSV(dCols, divs);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -448,6 +494,36 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
           }
         });
 
+        const now = new Date();
+        const isoDate = now.toISOString().slice(0, 10);
+        const dateLabel = now.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+        const timeStr = `${now.toTimeString().slice(0, 8)} CET`;
+        const buyerId = action.toId ?? `custom-${action.id}`;
+        const auditHash = computeAuditHash(`${action.id}|${isoDate}|${action.fromId}->${buyerId}|${action.shares}|${user.email}`);
+
+        setLiveTransactions((prev) => [
+          ...prev,
+          {
+            id: `LEDGER-${action.id.slice(-5).toUpperCase()}`,
+            sequence: 25 + prev.length,
+            date: isoDate,
+            dateLabel,
+            time: timeStr,
+            batchGroup: "Live Copilot",
+            shares: action.shares,
+            pctOfCompany: (action.shares / SHARES_OUTSTANDING) * 100,
+            sellerId: action.fromId,
+            sellerName: action.fromName,
+            sellerRank: 1,
+            buyerId,
+            buyerName: action.toName,
+            buyerRank: 99,
+            counterpartyLabel: action.toName,
+            auditHash,
+            verifiedBy: `${user.email} · Copilot`,
+          },
+        ]);
+
         notify(`Transferred ${fmt.int(action.shares)} shares from ${action.fromName} to ${action.toName}`);
         return { ok: true };
       }
@@ -544,6 +620,7 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
               .map((h) => (h.id === action.fromId ? { ...h, shares: h.shares + action.shares } : h));
           }
         });
+        setLiveTransactions((prev) => prev.filter((tx) => tx.id !== `LEDGER-${action.id.slice(-5).toUpperCase()}`));
         notify(`Reverted transfer of ${fmt.int(action.shares)} shares`);
         return { ok: true };
       }
@@ -743,7 +820,7 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
                 animate={{ opacity: 1, width: "auto" }}
                 exit={{ opacity: 0, width: 0 }}
                 transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                className="overflow-hidden"
+                className="flex items-center gap-2 overflow-hidden"
               >
                 <Segmented
                   id="kind"
@@ -755,11 +832,24 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
                     { value: "person", label: `Private · ${liveCapTable.summary.persons}` },
                   ]}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowBatchCols((v) => !v)}
+                  title="Toggle the 24 raw batch transfer columns vs clean ledger summary"
+                  className={cn(
+                    "inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-[12.5px] font-medium transition-all active:scale-[0.97]",
+                    showBatchCols
+                      ? "border-[#0a84ff]/35 bg-[#0a84ff]/10 text-[#0a6bd6]"
+                      : "border-black/[0.08] bg-white text-neutral-700 hover:bg-neutral-50"
+                  )}
+                >
+                  <span>{showBatchCols ? "Hide 24 batch cols" : "Show 24 batch cols"}</span>
+                </button>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {!isRegister && (
+          {!isRegister && sheet !== "ledger" && (
             <div className="relative">
               <button
                 onClick={() => setFilterOpen((o) => !o)}
@@ -868,6 +958,18 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
                     {...gridProps}
                   />
                 )}
+                {sheet === "ledger" && (
+                  <SheetGrid
+                    id="ledger"
+                    rows={ledgerRows}
+                    columns={lCols}
+                    getRowId={(tx) => tx.id}
+                    onOpenRow={(tx) => selectHolderById(tx.buyerId)}
+                    emptyMessage="No ledger entries match your search."
+                    {...gridProps}
+                    canWrite={false}
+                  />
+                )}
                 {sheet === "holdings" && <SheetGrid id="holdings" rows={rows} columns={hCols} getRowId={(r) => r.id} onOpenRow={setDrawer} {...gridProps} />}
                 {sheet === "matrix" && <SheetGrid id="matrix" rows={rows} columns={mCols} getRowId={(r) => r.id} onOpenRow={setDrawer} {...gridProps} />}
                 {sheet === "transactions" && <SheetGrid id="transactions" rows={txs} columns={tCols} getRowId={(t) => t.id} {...gridProps} />}
@@ -905,7 +1007,14 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
       </div>
 
       <CompanyDrawer row={drawer} holders={holders} onClose={closeDrawer} />
-      <ShareholderDrawer holder={holderDrawer} register={liveCapTable} onClose={closeHolderDrawer} onNotice={notify} />
+      <ShareholderDrawer
+        holder={holderDrawer}
+        register={liveCapTable}
+        liveTransactions={liveTransactions}
+        onSelectHolder={setHolderDrawer}
+        onClose={closeHolderDrawer}
+        onNotice={notify}
+      />
       <RegistrarChatDrawer
         open={chatOpen}
         onClose={() => setChatOpen(false)}
