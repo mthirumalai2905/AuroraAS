@@ -341,6 +341,7 @@ export function shareholderColumns(): Column<Shareholder>[] {
       align: "right",
       accent: "#0a84ff",
       tint: "bg-[#0a84ff]/[0.035]",
+      editable: false,
       value: (h) => h.pct,
       render: (h) => <span className="font-semibold text-neutral-900">{h.stakeText}</span>,
       formula: (_, n, L) => `=${L("num_shares")}${n} / ${SHARES_OUTSTANDING}`,

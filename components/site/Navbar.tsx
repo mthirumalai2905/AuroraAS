@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "motion/react";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
+import { Show, UserButton } from "@clerk/nextjs";
 import { Logo } from "@/components/ui/Logo";
 import { navLinks } from "@/lib/data/site";
 import { cn } from "@/lib/utils";
 
-const IMAGE_HEROES = ["/", "/about"];
+const IMAGE_HEROES = ["/"];
 
 export function Navbar() {
   const pathname = usePathname();
@@ -69,9 +70,19 @@ export function Navbar() {
           </ul>
 
           <div className="flex items-center gap-4">
-            <Link href="/login" className="eyebrow hidden opacity-70 transition-opacity hover:opacity-100 sm:block">
-              Log in
-            </Link>
+            <Suspense>
+              <Show when="signed-out">
+                <Link href="/login" className="eyebrow hidden opacity-70 transition-opacity hover:opacity-100 sm:block">
+                  Log in
+                </Link>
+              </Show>
+              <Show when="signed-in">
+                <Link href="/dashboard" className="eyebrow hidden opacity-75 transition-opacity hover:opacity-100 sm:block">
+                  Dashboard
+                </Link>
+                <UserButton />
+              </Show>
+            </Suspense>
             <Link
               href="/contact"
               className={cn(

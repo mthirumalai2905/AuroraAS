@@ -112,9 +112,26 @@ export function LoginForm({ demos, next }: { demos: Demo[]; next?: string }) {
 
       <div className="mt-7 short:mt-5">
         <div className="eyebrow flex items-center gap-3 text-[9.5px] text-muted">
+          <span className="h-px flex-1 bg-line" /> Or sign in with Clerk <span className="h-px flex-1 bg-line" />
+        </div>
+        <div className="mt-2.5 flex gap-2">
+          <a
+            href="/sign-in"
+            className="flex h-10 flex-1 items-center justify-center rounded-full border border-line bg-white font-mono text-[10.5px] tracking-[0.1em] uppercase text-ink transition-colors hover:border-plum/35"
+          >
+            Clerk Sign in
+          </a>
+          <a
+            href="/sign-up"
+            className="flex h-10 flex-1 items-center justify-center rounded-full border border-line bg-white font-mono text-[10.5px] tracking-[0.1em] uppercase text-ink transition-colors hover:border-plum/35"
+          >
+            Create account
+          </a>
+        </div>
+        <div className="eyebrow mt-4 flex items-center gap-3 text-[9.5px] text-muted short:mt-3">
           <span className="h-px flex-1 bg-line" /> Demo accounts <span className="h-px flex-1 bg-line" />
         </div>
-        <div className="mt-3 grid gap-1.5 short:mt-2.5">
+        <div className="mt-2.5 grid gap-1.5 short:mt-2">
           {demos.map((d) => (
             <button
               key={d.email}

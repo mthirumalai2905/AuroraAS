@@ -21,6 +21,7 @@ export type Column<R> = {
   accent?: string;
   tint?: string;
   fill?: (row: R) => { color: string; opacity: number } | null;
+  editable?: boolean;
 };
 
 export type Stats = {
@@ -73,12 +74,28 @@ type Props<R> = {
   onStats: (stats: Stats | null) => void;
   onNotice: (message: string) => void;
   emptyMessage?: string;
+  canWrite?: boolean;
+  onWriteCell?: (row: R, columnKey: string, value: string) => void;
 };
 
-export function SheetGrid<R>({ id, rows, columns, getRowId, density, onOpenRow, onStats, onNotice, emptyMessage = "No rows match your filters." }: Props<R>) {
+export function SheetGrid<R>({
+  id,
+  rows,
+  columns,
+  getRowId,
+  density,
+  onOpenRow,
+  onStats,
+  onNotice,
+  emptyMessage = "No rows match your filters.",
+  canWrite = false,
+  onWriteCell,
+}: Props<R>) {
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const [anchor, setAnchor] = useState<Pos>({ r: 0, c: 0 });
   const [focus, setFocus] = useState<Pos>({ r: 0, c: 0 });
+  const [editing, setEditing] = useState<{ r: number; c: number; draft: string } | null>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
   const dragging = useRef(false);
   const interacted = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -161,6 +178,38 @@ export function SheetGrid<R>({ id, rows, columns, getRowId, density, onOpenRow, 
     if (!extend) setAnchor(n);
   }
 
+  function startEdit(r: number, c: number, initialValue?: string) {
+    const col = columns[c];
+    const row = sorted[r];
+    if (!col || !row) return;
+    if (!canWrite || !onWriteCell) {
+      onNotice("Read-only access. Only paal@synx.tools and thiru@synx.tools have write access.");
+      return;
+    }
+    if (col.editable === false) {
+      onNotice(`"${col.title}" is a formula-computed column and cannot be edited directly.`);
+      return;
+    }
+    const raw = initialValue !== undefined ? initialValue : String(col.value(row) ?? "");
+    setEditing({ r, c, draft: raw });
+    setTimeout(() => {
+      editInputRef.current?.focus();
+      if (initialValue === undefined) editInputRef.current?.select();
+    }, 0);
+  }
+
+  function commitEdit() {
+    if (!editing) return;
+    const col = columns[editing.c];
+    const row = sorted[editing.r];
+    const nextDraft = editing.draft;
+    setEditing(null);
+    if (col && row && onWriteCell && String(col.value(row) ?? "") !== nextDraft) {
+      onWriteCell(row, col.key, nextDraft);
+    }
+    scrollRef.current?.focus({ preventScroll: true });
+  }
+
   async function copy() {
     const lines: string[] = [];
     for (let r = r0; r <= r1; r++) {
@@ -177,7 +226,7 @@ export function SheetGrid<R>({ id, rows, columns, getRowId, density, onOpenRow, 
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
-    if (!sorted.length) return;
+    if (!sorted.length || editing) return;
     const mod = e.metaKey || e.ctrlKey;
     const step = (dr: number, dc: number) => {
       if (mod) {
@@ -214,8 +263,12 @@ export function SheetGrid<R>({ id, rows, columns, getRowId, density, onOpenRow, 
       case "PageUp":
         select({ r: f.r - 10, c: f.c }, e.shiftKey);
         break;
+      case "F2":
+        startEdit(f.r, f.c);
+        break;
       case "Enter":
         if (f.c === 0 && onOpenRow) onOpenRow(sorted[f.r]);
+        else if (canWrite && onWriteCell) startEdit(f.r, f.c);
         else select({ r: f.r + (e.shiftKey ? -1 : 1), c: f.c }, false);
         break;
       case "Escape":
@@ -229,7 +282,7 @@ export function SheetGrid<R>({ id, rows, columns, getRowId, density, onOpenRow, 
         } else if (mod && e.key.toLowerCase() === "c") {
           copy();
         } else if (!mod && e.key.length === 1) {
-          onNotice("This register is read-only. Figures are maintained by Aurora Registrar");
+          startEdit(f.r, f.c, e.key);
         } else return;
     }
     e.preventDefault();
@@ -421,7 +474,7 @@ export function SheetGrid<R>({ id, rows, columns, getRowId, density, onOpenRow, 
                       }}
                       onDoubleClick={() => {
                         if (sticky && onOpenRow) onOpenRow(row);
-                        else onNotice("This register is read-only. Figures are maintained by Aurora Registrar");
+                        else startEdit(r, c);
                       }}
                       className={cn(
                         "relative flex shrink-0 cursor-cell select-none items-center border-b border-r border-black/[0.06] px-3 text-[13px] tabular-nums text-neutral-800 transition-colors duration-150",
@@ -444,7 +497,31 @@ export function SheetGrid<R>({ id, rows, columns, getRowId, density, onOpenRow, 
                         ) : null;
                       })()}
                       {inRange && <span className="pointer-events-none absolute inset-0 bg-[#0a84ff]/[0.08]" />}
-                      <span className="relative min-w-0 truncate">{col.render ? col.render(row) : display(col, row)}</span>
+                      {editing && editing.r === r && editing.c === c ? (
+                        <input
+                          ref={editInputRef}
+                          value={editing.draft}
+                          onChange={(e) => setEditing({ ...editing, draft: e.target.value })}
+                          onBlur={commitEdit}
+                          onKeyDown={(e) => {
+                            e.stopPropagation();
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              commitEdit();
+                            } else if (e.key === "Escape") {
+                              e.preventDefault();
+                              setEditing(null);
+                              scrollRef.current?.focus({ preventScroll: true });
+                            }
+                          }}
+                          className={cn(
+                            "relative z-30 h-full w-full bg-white text-[13px] font-medium text-neutral-900 focus:outline-none",
+                            col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "text-left"
+                          )}
+                        />
+                      ) : (
+                        <span className="relative min-w-0 truncate">{col.render ? col.render(row) : display(col, row)}</span>
+                      )}
                       {active && (
                         <motion.span
                           layoutId={`${id}-active-cell`}
