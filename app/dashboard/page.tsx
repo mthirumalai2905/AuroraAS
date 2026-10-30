@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
@@ -9,7 +8,7 @@ import { auroraEquity } from "@/lib/data/aurora-equity";
 
 export const metadata: Metadata = { title: "Stakeholder dashboard" };
 
-async function DashboardContent() {
+export default async function DashboardPage() {
   const clerkUser = await currentUser();
   let user: Stakeholder | null = null;
 
@@ -31,13 +30,5 @@ async function DashboardContent() {
 
   if (!user) redirect("/login");
 
-  return <Dashboard user={user} capTable={auroraEquity} />;
-}
-
-export default function DashboardPage() {
-  return (
-    <Suspense>
-      <DashboardContent />
-    </Suspense>
-  );
+  return <Dashboard user={user} capTable={auroraEquity} events={[]} />;
 }

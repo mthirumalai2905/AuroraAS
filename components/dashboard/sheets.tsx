@@ -1,6 +1,7 @@
 import { SHARES_OUTSTANDING, TRANSFER_COLUMNS, type Shareholder } from "@/lib/data/aurora-equity";
 import type { CompanyMatrixRow, OwnershipBand } from "@/lib/data/company-matrix";
 import { buildPersonTradeSummary, type LedgerTransaction } from "@/lib/data/ledger";
+import type { RegisterEvent } from "@/lib/data/register-log";
 import { fmt } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Column } from "@/components/dashboard/SheetGrid";
@@ -740,6 +741,141 @@ export function companyMatrixColumns(): Column<CompanyMatrixRow>[] {
       value: (h) => h.shares,
       render: (h) => <span className="tabular-nums font-medium">{fmt.int(h.shares)}</span>,
       total: (rows) => fmt.int(rows.reduce((s, h) => s + h.shares, 0)),
+    },
+  ];
+}
+
+const eventKindStyle: Record<RegisterEvent["kind"], string> = {
+  add: "bg-[#0a84ff]/12 text-[#0a6bd6]",
+  credit: "bg-[#30d158]/15 text-[#1f7a35]",
+  debit: "bg-[#ff3b30]/12 text-[#c92a2a]",
+  field_update: "bg-black/[0.05] text-neutral-700",
+  remove: "bg-[#ff9f0a]/15 text-[#9a5b00]",
+  revert: "bg-[#5e5ce6]/12 text-[#4b49c4]",
+};
+
+export function registerLogColumns(): Column<RegisterEvent>[] {
+  return [
+    {
+      key: "at",
+      title: "Logged at",
+      width: 168,
+      kind: "text",
+      editable: false,
+      value: (e) => e.at,
+      render: (e) => (
+        <span className="font-mono text-[11.5px] text-neutral-600">{e.at.replace("T", " ").slice(0, 19)}</span>
+      ),
+      total: (rows) => <span className="text-neutral-500">{rows.length} events</span>,
+    },
+    {
+      key: "kind",
+      title: "Entry",
+      width: 118,
+      kind: "text",
+      editable: false,
+      value: (e) => e.kind,
+      render: (e) => (
+        <span className={cn("rounded-sm px-1.5 py-0.5 text-[11px] font-semibold uppercase", eventKindStyle[e.kind])}>
+          {e.kind.replace("_", " ")}
+        </span>
+      ),
+    },
+    {
+      key: "holder",
+      title: "Shareholder",
+      width: 220,
+      kind: "text",
+      editable: false,
+      value: (e) => e.holderName,
+      render: (e) => <span className="truncate font-medium text-neutral-900">{e.holderName}</span>,
+    },
+    {
+      key: "shares",
+      title: "Shares",
+      width: 120,
+      kind: "int",
+      align: "right",
+      editable: false,
+      value: (e) => e.shares ?? 0,
+      render: (e) =>
+        e.shares != null ? (
+          <span className="font-mono font-semibold tabular-nums">{fmt.int(e.shares)}</span>
+        ) : (
+          <span className="text-neutral-300">—</span>
+        ),
+    },
+    {
+      key: "counterparty",
+      title: "Counterparty",
+      width: 200,
+      kind: "text",
+      editable: false,
+      value: (e) => e.counterpartyName ?? "",
+      render: (e) => e.counterpartyName || <span className="text-neutral-300">—</span>,
+    },
+    {
+      key: "field",
+      title: "Field",
+      width: 120,
+      kind: "text",
+      editable: false,
+      value: (e) => e.field ?? "",
+      render: (e) => e.field || <span className="text-neutral-300">—</span>,
+    },
+    {
+      key: "before",
+      title: "Before",
+      width: 150,
+      kind: "text",
+      editable: false,
+      value: (e) => e.beforeValue ?? "",
+      render: (e) => <span className="truncate font-mono text-[12px] text-neutral-500">{e.beforeValue || "—"}</span>,
+    },
+    {
+      key: "after",
+      title: "After",
+      width: 150,
+      kind: "text",
+      editable: false,
+      value: (e) => e.afterValue ?? "",
+      render: (e) => <span className="truncate font-mono text-[12px] text-neutral-800">{e.afterValue || "—"}</span>,
+    },
+    {
+      key: "source",
+      title: "Source",
+      width: 110,
+      kind: "text",
+      editable: false,
+      value: (e) => e.source,
+      render: (e) => <span className="text-[12px] text-neutral-600">{e.source}</span>,
+    },
+    {
+      key: "actor",
+      title: "Actor",
+      width: 180,
+      kind: "text",
+      editable: false,
+      value: (e) => e.actor,
+      render: (e) => <span className="truncate text-[12px] text-neutral-600">{e.actor}</span>,
+    },
+    {
+      key: "note",
+      title: "Note",
+      width: 260,
+      kind: "text",
+      editable: false,
+      value: (e) => e.note ?? "",
+      render: (e) => <span className="truncate text-neutral-600">{e.note || "—"}</span>,
+    },
+    {
+      key: "hash",
+      title: "Audit",
+      width: 170,
+      kind: "text",
+      editable: false,
+      value: (e) => e.auditHash,
+      render: (e) => <span className="font-mono text-[11px] text-neutral-500">{e.auditHash}</span>,
     },
   ];
 }

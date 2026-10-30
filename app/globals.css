@@ -27,6 +27,16 @@
   --animate-marquee: marquee 50s linear infinite;
   --animate-pulse-soft: pulse-soft 2.4s ease-in-out infinite;
   --animate-caret: caret 1s steps(1) infinite;
+  --animate-aurora-drift: aurora-drift 14s ease-in-out infinite;
+  --animate-rainbow-sweep: rainbow-sweep 3.2s linear infinite;
+  --animate-rainbow-sweep-fast: rainbow-sweep 1.4s linear infinite;
+  --animate-rainbow-window: rainbow-sweep 8s linear infinite;
+  --animate-siri-spin: siri-spin 7s linear infinite;
+  --animate-siri-breathe: siri-breathe 2.8s ease-in-out infinite;
+  --animate-siri-breathe-fast: siri-breathe 1.2s ease-in-out infinite;
+  --animate-siri-blob-a: siri-blob-a 7.4s ease-in-out infinite;
+  --animate-siri-blob-b: siri-blob-b 9.2s ease-in-out infinite;
+  --animate-siri-blob-c: siri-blob-c 6.1s ease-in-out infinite;
 
   @keyframes marquee {
     from { transform: translateX(0); }
@@ -39,6 +49,37 @@
   @keyframes caret {
     0%, 100% { opacity: 1; }
     50% { opacity: 0; }
+  }
+  @keyframes aurora-drift {
+    0%, 100% { transform: translate3d(-12%, -3%, 0) scale(1.08); }
+    50% { transform: translate3d(12%, 3%, 0) scale(1.16); }
+  }
+  @keyframes rainbow-sweep {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+  }
+  @keyframes siri-spin {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes siri-breathe {
+    0%, 100% { transform: scale(0.96); filter: blur(10px); }
+    50% { transform: scale(1.08); filter: blur(16px); }
+  }
+  @keyframes siri-blob-a {
+    0% { border-radius: 46% 54% 62% 38% / 42% 48% 52% 58%; transform: translate(-10%, -6%) rotate(0deg) scale(1); }
+    40% { border-radius: 60% 40% 36% 64% / 55% 38% 62% 45%; transform: translate(8%, 4%) rotate(28deg) scale(1.12); }
+    70% { border-radius: 38% 62% 58% 42% / 60% 52% 38% 48%; transform: translate(-4%, 10%) rotate(-18deg) scale(0.94); }
+    100% { border-radius: 46% 54% 62% 38% / 42% 48% 52% 58%; transform: translate(-10%, -6%) rotate(0deg) scale(1); }
+  }
+  @keyframes siri-blob-b {
+    0% { border-radius: 58% 42% 40% 60% / 50% 62% 38% 50%; transform: translate(8%, 2%) rotate(12deg) scale(1.04); }
+    50% { border-radius: 40% 60% 64% 36% / 42% 36% 64% 58%; transform: translate(-12%, -8%) rotate(-32deg) scale(1.16); }
+    100% { border-radius: 58% 42% 40% 60% / 50% 62% 38% 50%; transform: translate(8%, 2%) rotate(12deg) scale(1.04); }
+  }
+  @keyframes siri-blob-c {
+    0% { border-radius: 42% 58% 48% 52% / 62% 40% 60% 38%; transform: translate(2%, 10%) rotate(-8deg) scale(0.96); }
+    50% { border-radius: 64% 36% 52% 48% / 38% 58% 42% 62%; transform: translate(-8%, -4%) rotate(22deg) scale(1.1); }
+    100% { border-radius: 42% 58% 48% 52% / 62% 40% 60% 38%; transform: translate(2%, 10%) rotate(-8deg) scale(0.96); }
   }
 }
 
@@ -115,6 +156,93 @@ html.lenis body {
 @utility scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: rgba(60, 60, 67, 0.25) transparent;
+}
+
+@utility rainbow-window {
+  background-image: linear-gradient(
+    90deg,
+    #c4b5fd 0%,
+    #38bdf8 18%,
+    #34d399 36%,
+    #fde68a 54%,
+    #f9a8d4 72%,
+    #c4b5fd 100%
+  );
+  background-size: 200% 100%;
+}
+
+@utility siri-orb {
+  background:
+    conic-gradient(from 0deg, #7dd3fc, #818cf8, #c084fc, #f9a8d4, #fde68a, #6ee7b7, #38bdf8, #7dd3fc);
+}
+
+@utility siri-halo {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(196, 181, 253, 0.28) 0%, rgba(56, 189, 248, 0.12) 40%, transparent 70%);
+  filter: blur(22px);
+}
+
+@utility siri-blob {
+  pointer-events: none;
+  filter: blur(16px);
+  opacity: 0.38;
+}
+
+@utility siri-blob-a {
+  background: radial-gradient(circle at 35% 40%, rgba(125, 211, 252, 0.7), rgba(167, 139, 250, 0.18) 62%, transparent 74%);
+}
+
+@utility siri-blob-b {
+  background: radial-gradient(circle at 70% 55%, rgba(244, 114, 182, 0.55), rgba(56, 189, 248, 0.16) 60%, transparent 76%);
+}
+
+@utility siri-blob-c {
+  background: radial-gradient(circle at 50% 70%, rgba(196, 181, 253, 0.5), rgba(110, 231, 183, 0.14) 58%, transparent 74%);
+}
+
+@utility siri-eye {
+  display: block;
+  width: 18px;
+  height: 36px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(40, 20, 70, 0.08),
+    0 6px 14px rgba(40, 20, 80, 0.18);
+  transform-origin: center;
+  transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@utility siri-eye-sm {
+  width: 11px;
+  height: 22px;
+  box-shadow:
+    0 0 0 1px rgba(40, 20, 70, 0.08),
+    0 4px 10px rgba(40, 20, 80, 0.16);
+}
+
+@utility siri-rim {
+  background:
+    radial-gradient(80% 55% at 50% 115%, rgba(167, 139, 250, 0.62), transparent 62%),
+    radial-gradient(70% 50% at 18% 100%, rgba(56, 189, 248, 0.45), transparent 58%),
+    radial-gradient(70% 50% at 82% 100%, rgba(244, 114, 182, 0.42), transparent 58%);
+}
+
+@utility siri-edge {
+  box-shadow:
+    inset 0 0 80px 8px rgba(167, 139, 250, 0.28),
+    inset 0 -40px 90px 12px rgba(56, 189, 248, 0.2),
+    inset 0 0 0 1.5px rgba(255, 255, 255, 0.08);
+}
+
+@utility aurora-field {
+  background:
+    radial-gradient(42% 52% at 12% 22%, rgba(168, 85, 247, 0.5), transparent 70%),
+    radial-gradient(46% 40% at 88% 12%, rgba(56, 189, 248, 0.42), transparent 70%),
+    radial-gradient(50% 48% at 52% 92%, rgba(244, 114, 182, 0.36), transparent 72%),
+    radial-gradient(36% 42% at 78% 68%, rgba(52, 211, 153, 0.3), transparent 70%),
+    radial-gradient(32% 36% at 22% 78%, rgba(251, 191, 36, 0.26), transparent 68%);
+  filter: blur(34px);
 }
 
 @media (prefers-reduced-motion: reduce) {

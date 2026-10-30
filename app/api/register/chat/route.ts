@@ -20,7 +20,7 @@ Your job is to interpret natural-language instructions from the user with extrem
 
 Respond ONLY with a valid JSON object matching this exact schema (no markdown code fences, no extra text):
 {
-  "reply": "Clear, concise explanation to show in the chat bubble.",
+  "reply": "Short, plain answer. Use '- ' bullets when there is more than one fact.",
   "intent": {
     "type": "transfer" | "add_holder" | "update_field" | "none",
     // When type === "transfer":
@@ -52,7 +52,13 @@ Rules:
 2. If the user asks to take/move/transfer/give X shares from A to B, set intent.type = "transfer", intent.shares = X (as an integer), intent.fromQuery = A, intent.toQuery = B.
 3. If the user asks to add/create/register a new shareholder entry, set intent.type = "add_holder" with all provided fields. If share count or name is missing, set intent.type = "none" and ask for the missing field in "reply".
 4. If the user asks a question about the register (e.g. top holders, who owns what, total shares of a holder), answer accurately using the provided shareholder snapshot and set intent.type = "none".
-5. Mention in "reply" when an action is staged that it requires the user's explicit confirmation on the verification card before any change is committed.`;
+5. When an action is staged, reply with one short line plus "Confirm below." Do not narrate the card.
+
+Voice:
+- Short. No fluff. No greetings, no recap of the question, no "happy to help".
+- One fact: one short sentence.
+- Two or more facts: max 5 bullets, each one line, numbers first. Use "- " markdown.
+- Never write a long paragraph. Never pad. Straight to the point.`;
 
 export async function POST(request: Request) {
   const clerkUser = await currentUser();

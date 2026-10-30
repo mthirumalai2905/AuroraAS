@@ -27,11 +27,11 @@ import { RegisterKpis } from "@/components/dashboard/RegisterKpis";
 import { ShareholderDrawer } from "@/components/dashboard/ShareholderDrawer";
 import { RegistrarChatDrawer, type StagedAction } from "@/components/dashboard/RegistrarChatDrawer";
 import { SheetGrid, formatKind, toCSV, type Stats } from "@/components/dashboard/SheetGrid";
-import { companyHoldingsColumns, companyMatrixColumns, ledgerSheetColumns, shareholderColumns } from "@/components/dashboard/sheets";
-import type { AuroraEquityRegister, Shareholder, ShareholderKind, TransferKey } from "@/lib/data/aurora-equity";
-import { SHARES_OUTSTANDING, TRANSFER_COLUMNS } from "@/lib/data/aurora-equity";
+import { companyHoldingsColumns, companyMatrixColumns, ledgerSheetColumns, registerLogColumns, shareholderColumns } from "@/components/dashboard/sheets";
+import type { AuroraEquityRegister, Shareholder, ShareholderKind } from "@/lib/data/aurora-equity";
 import { buildCompanyMatrix } from "@/lib/data/company-matrix";
-import { buildLedgerTransactions, computeAuditHash, type LedgerTransaction } from "@/lib/data/ledger";
+import { buildLedgerTransactions } from "@/lib/data/ledger";
+import { composeRegister, eventsToLiveLedger, type RegisterEvent } from "@/lib/data/register-log";
 import { canWriteDashboard, type Stakeholder } from "@/lib/auth";
 import { fmt } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -39,15 +39,16 @@ import { cn } from "@/lib/utils";
 const SHEETS = [
   { id: "register", label: "Aurora Equity" },
   { id: "ledger", label: "Trade Ledger" },
+  { id: "log", label: "Register log" },
   { id: "companies", label: "Companies" },
   { id: "matrix", label: "Ownership matrix" },
 ] as const;
 type SheetId = (typeof SHEETS)[number]["id"];
 type KindFilter = "all" | ShareholderKind;
 
-type Props = { user: Stakeholder; capTable: AuroraEquityRegister };
+type Props = { user: Stakeholder; capTable: AuroraEquityRegister; events: RegisterEvent[] };
 
-export function Dashboard({ user, capTable }: Props) {
+export function Dashboard({ user, capTable, events }: Props) {
   const router = useRouter();
   const { signOut } = useClerk();
   const canWrite = Boolean(user.canWrite && canWriteDashboard(user.email));
@@ -62,7 +63,7 @@ export function Dashboard({ user, capTable }: Props) {
   const [stats, setStats] = useState<Stats | null>(null);
   const [toast, setToast] = useState<{ id: number; msg: string } | null>(null);
   const [shareholdersState, setShareholdersState] = useState<Shareholder[]>(capTable.shareholders);
-  const [liveTransactions, setLiveTransactions] = useState<LedgerTransaction[]>([]);
+  const [eventsState, setEventsState] = useState<RegisterEvent[]>(events);
   const [showBatchCols, setShowBatchCols] = useState(false);
   const [writeModalOpen, setWriteModalOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -80,38 +81,38 @@ export function Dashboard({ user, capTable }: Props) {
   const searchRef = useRef<HTMLInputElement>(null);
   const isRegister = sheet === "register";
 
-  const liveCapTable = useMemo<AuroraEquityRegister>(() => {
-    const sorted = [...shareholdersState].sort((a, b) => b.shares - a.shares);
-    let cum = 0;
-    const ranked = sorted.map((h, idx) => {
-      const pct = (h.shares / SHARES_OUTSTANDING) * 100;
-      cum += pct;
-      return {
-        ...h,
-        rank: idx + 1,
-        pct,
-        cumPct: cum,
-        stakeText: `${pct.toFixed(2)}%`,
-      };
-    });
-    const companiesList = ranked.filter((h) => h.kind === "company");
-    const personsList = ranked.filter((h) => h.kind === "person");
-    const registered = ranked.reduce((s, h) => s + h.shares, 0);
-    return {
-      ...capTable,
-      shareholders: ranked,
-      summary: {
-        ...capTable.summary,
-        holders: ranked.length,
-        companies: companiesList.length,
-        persons: personsList.length,
-        companySharesPct: (companiesList.reduce((s, h) => s + h.shares, 0) / SHARES_OUTSTANDING) * 100,
-        largest: ranked[0] ?? capTable.summary.largest,
-        top10Pct: ranked.slice(0, 10).reduce((s, h) => s + h.pct, 0),
-        registered,
-      },
+  const liveCapTable = useMemo(
+    () =>
+      composeRegister(shareholdersState, {
+        name: capTable.name,
+        orgNr: capTable.orgNr,
+        asOf: capTable.asOf,
+        shareClass: capTable.shareClass,
+      }),
+    [capTable.asOf, capTable.name, capTable.orgNr, capTable.shareClass, shareholdersState]
+  );
+  const liveTransactions = useMemo(() => eventsToLiveLedger(eventsState), [eventsState]);
+
+  const applyPersisted = useCallback((register: AuroraEquityRegister, nextEvents: RegisterEvent[]) => {
+    setShareholdersState(register.shareholders);
+    setEventsState(nextEvents);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/register")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.register) return;
+        applyPersisted(data.register, data.events ?? []);
+      })
+      .catch(() => {
+        /* keep the seeded book on screen */
+      });
+    return () => {
+      cancelled = true;
     };
-  }, [capTable, shareholdersState]);
+  }, [applyPersisted]);
 
   const notify = useCallback((msg: string) => setToast({ id: Date.now(), msg }), []);
   const closeHolderDrawer = useCallback(() => setHolderDrawer(null), []);
@@ -218,7 +219,18 @@ export function Dashboard({ user, capTable }: Props) {
       }),
     [liveCapTable.shareholders, liveTransactions]
   );
+  const logRows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const rows = [...eventsState].reverse();
+    if (!q) return rows;
+    return rows.filter((e) =>
+      `${e.kind} ${e.holderName} ${e.counterpartyName ?? ""} ${e.field ?? ""} ${e.note ?? ""} ${e.actor} ${e.source} ${e.auditHash}`
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [eventsState, query]);
   const mCols = useMemo(() => companyMatrixColumns(), []);
+  const logCols = useMemo(() => registerLogColumns(), []);
   const lCols = useMemo(() => ledgerSheetColumns(selectHolderById), [selectHolderById]);
   const sCols = useMemo(
     () =>
@@ -234,6 +246,7 @@ export function Dashboard({ user, capTable }: Props) {
   const counts: Record<SheetId, number> = {
     register: holdersRows.length,
     ledger: ledgerRows.length,
+    log: logRows.length,
     companies: companyRows.length,
     matrix: matrixRows.length,
   };
@@ -251,9 +264,11 @@ export function Dashboard({ user, capTable }: Props) {
         ? toCSV(sCols, holdersRows)
         : sheet === "ledger"
           ? toCSV(lCols, ledgerRows)
-          : sheet === "companies"
-            ? toCSV(cCols, companyRows)
-            : toCSV(mCols, matrixRows);
+          : sheet === "log"
+            ? toCSV(logCols, logRows)
+            : sheet === "companies"
+              ? toCSV(cCols, companyRows)
+              : toCSV(mCols, matrixRows);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -284,73 +299,19 @@ export function Dashboard({ user, capTable }: Props) {
       const res = await fetch("/api/register/write", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "cell-update", id: row.id, columnKey, value: rawValue }),
+        body: JSON.stringify({ action: "cell-update", source: "grid", id: row.id, columnKey, value: rawValue }),
       });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        notify(err.error ?? "Write denied by server.");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.register) {
+        notify(data.error ?? "Write denied by server.");
         return;
       }
 
-      const transferKeys = new Set<string>(TRANSFER_COLUMNS.map((t) => t.key));
-
-      setShareholdersState((prev) =>
-        prev.map((h) => {
-          if (h.id !== row.id) return h;
-          const next = { ...h };
-          if (columnKey === "num_shares") {
-            const parsed = Number(rawValue.replace(/[^0-9.-]/g, ""));
-            if (!Number.isFinite(parsed) || parsed < 0) return h;
-            next.shares = Math.round(parsed);
-          } else if (columnKey === "opening_shares") {
-            const trimmed = rawValue.trim();
-            if (!trimmed) {
-              next.openingShares = null;
-            } else {
-              const parsed = Number(trimmed.replace(/[^0-9.-]/g, ""));
-              if (Number.isFinite(parsed)) next.openingShares = Math.round(parsed);
-            }
-          } else if (columnKey === "name") {
-            next.name = rawValue.trim() || h.name;
-          } else if (columnKey === "first_name") {
-            next.firstName = rawValue.trim();
-          } else if (columnKey === "investor_id") {
-            next.investorId = rawValue.trim();
-            const cleanId = next.investorId.replace(/\s+/g, "");
-            next.kind = /^[89]\d{8}$/.test(cleanId) ? "company" : "person";
-          } else if (columnKey === "address") {
-            next.address = rawValue.trim();
-          } else if (columnKey === "address2") {
-            next.address2 = rawValue.trim();
-          } else if (columnKey === "postal") {
-            next.postalCode = rawValue.trim();
-          } else if (columnKey === "city") {
-            next.city = rawValue.trim();
-          } else if (columnKey === "country") {
-            next.country = rawValue.trim();
-          } else if (columnKey === "email") {
-            next.email = rawValue.trim();
-          } else if (transferKeys.has(columnKey)) {
-            const key = columnKey as TransferKey;
-            const trimmed = rawValue.trim();
-            const nextTransfers = { ...h.transfers };
-            if (!trimmed) {
-              delete nextTransfers[key];
-            } else {
-              const parsed = Number(trimmed.replace(/[^0-9.-]/g, ""));
-              if (Number.isFinite(parsed)) nextTransfers[key] = Math.round(parsed);
-            }
-            next.transfers = nextTransfers;
-          }
-          next.displayName = next.firstName && next.kind === "person" ? `${next.name} ${next.firstName}` : next.name;
-          return next;
-        })
-      );
-
+      applyPersisted(data.register, data.events ?? eventsState);
       notify(`Saved changes to ${row.name}`);
     },
-    [canWrite, notify]
+    [applyPersisted, canWrite, eventsState, notify]
   );
 
   async function handleAddShareholder(e: React.FormEvent) {
@@ -368,45 +329,15 @@ export function Dashboard({ user, capTable }: Props) {
     const res = await fetch("/api/register/write", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "add-shareholder", holder: newHolder }),
+      body: JSON.stringify({ action: "add-shareholder", source: "modal", holder: newHolder }),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      notify(err.error ?? "Write denied by server.");
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.register) {
+      notify(data.error ?? "Write denied by server.");
       return;
     }
 
-    const cleanId = newHolder.investorId.replace(/\s+/g, "");
-    const kind: ShareholderKind = /^[89]\d{8}$/.test(cleanId) ? "company" : "person";
-    const pct = (parsedShares / SHARES_OUTSTANDING) * 100;
-    const entry: Shareholder = {
-      id: `custom-${Date.now()}`,
-      rank: shareholdersState.length + 1,
-      kind,
-      name: newHolder.name.trim(),
-      firstName: newHolder.firstName.trim(),
-      displayName:
-        newHolder.firstName.trim() && kind === "person"
-          ? `${newHolder.name.trim()} ${newHolder.firstName.trim()}`
-          : newHolder.name.trim(),
-      investorId: newHolder.investorId.trim() || "—",
-      orgNr: kind === "company" ? newHolder.investorId.trim() : null,
-      contact: kind === "company" && newHolder.firstName.trim() ? newHolder.firstName.trim() : null,
-      address: newHolder.address.trim(),
-      address2: "",
-      postalCode: newHolder.postalCode.trim(),
-      city: newHolder.city.trim(),
-      country: newHolder.country.trim(),
-      email: newHolder.email.trim(),
-      shares: Math.round(parsedShares),
-      openingShares: Math.round(parsedShares),
-      stakeText: `${pct.toFixed(2)}%`,
-      pct,
-      cumPct: 100,
-      transfers: {},
-    };
-
-    setShareholdersState((prev) => [entry, ...prev]);
+    applyPersisted(data.register, data.events ?? eventsState);
     setWriteModalOpen(false);
     setNewHolder({
       name: "",
@@ -419,7 +350,7 @@ export function Dashboard({ user, capTable }: Props) {
       address: "",
       postalCode: "",
     });
-    notify(`Added ${entry.name} (${fmt.int(entry.shares)} shares) to register`);
+    notify(`Added ${newHolder.name.trim()} (${fmt.int(parsedShares)} shares) to register`);
   }
 
   const handleExecuteChatAction = useCallback(
@@ -437,6 +368,7 @@ export function Dashboard({ user, capTable }: Props) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "transfer-shares",
+            source: "copilot",
             shares: action.shares,
             fromId: action.fromId,
             fromBefore: action.fromBefore,
@@ -447,84 +379,11 @@ export function Dashboard({ user, capTable }: Props) {
             toAfter: action.toAfter,
           }),
         });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          return { ok: false, error: err.error ?? "Transfer rejected by server." };
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.register) {
+          return { ok: false, error: data.error ?? "Transfer rejected by server." };
         }
-
-        setShareholdersState((prev) => {
-          const sender = prev.find((h) => h.id === action.fromId);
-          if (!sender || sender.shares < action.shares) return prev;
-
-          if (action.toId) {
-            return prev.map((h) => {
-              if (h.id === action.fromId) return { ...h, shares: h.shares - action.shares };
-              if (h.id === action.toId) return { ...h, shares: h.shares + action.shares };
-              return h;
-            });
-          } else {
-            const pct = (action.shares / SHARES_OUTSTANDING) * 100;
-            const isComp = /\b(?:AS|ASA|AB|LTD|INC|LLC|HOLDING|INVEST|CAPITAL)\b/i.test(action.toName);
-            const newRecipient: Shareholder = {
-              id: `custom-${action.id}`,
-              rank: prev.length + 1,
-              kind: isComp ? "company" : "person",
-              name: action.toName,
-              firstName: "",
-              displayName: action.toName,
-              investorId: "—",
-              orgNr: null,
-              contact: null,
-              address: "",
-              address2: "",
-              postalCode: "",
-              city: "OSLO",
-              country: "Norway",
-              email: "",
-              shares: action.shares,
-              openingShares: 0,
-              stakeText: `${pct.toFixed(2)}%`,
-              pct,
-              cumPct: 100,
-              transfers: {},
-            };
-            return [
-              newRecipient,
-              ...prev.map((h) => (h.id === action.fromId ? { ...h, shares: h.shares - action.shares } : h)),
-            ];
-          }
-        });
-
-        const now = new Date();
-        const isoDate = now.toISOString().slice(0, 10);
-        const dateLabel = now.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-        const timeStr = `${now.toTimeString().slice(0, 8)} CET`;
-        const buyerId = action.toId ?? `custom-${action.id}`;
-        const auditHash = computeAuditHash(`${action.id}|${isoDate}|${action.fromId}->${buyerId}|${action.shares}|${user.email}`);
-
-        setLiveTransactions((prev) => [
-          ...prev,
-          {
-            id: `LEDGER-${action.id.slice(-5).toUpperCase()}`,
-            sequence: 25 + prev.length,
-            date: isoDate,
-            dateLabel,
-            time: timeStr,
-            batchGroup: "Live Copilot",
-            shares: action.shares,
-            pctOfCompany: (action.shares / SHARES_OUTSTANDING) * 100,
-            sellerId: action.fromId,
-            sellerName: action.fromName,
-            sellerRank: 1,
-            buyerId,
-            buyerName: action.toName,
-            buyerRank: 99,
-            counterpartyLabel: action.toName,
-            auditHash,
-            verifiedBy: `${user.email} · Copilot`,
-          },
-        ]);
-
+        applyPersisted(data.register, data.events ?? eventsState);
         notify(`Transferred ${fmt.int(action.shares)} shares from ${action.fromName} to ${action.toName}`);
         return { ok: true };
       }
@@ -533,42 +392,14 @@ export function Dashboard({ user, capTable }: Props) {
         const res = await fetch("/api/register/write", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "add-shareholder", holder: action }),
+          body: JSON.stringify({ action: "add-shareholder", source: "copilot", holder: action }),
         });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          return { ok: false, error: err.error ?? "Add entry rejected by server." };
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.register) {
+          return { ok: false, error: data.error ?? "Add entry rejected by server." };
         }
-
-        const pct = (action.shares / SHARES_OUTSTANDING) * 100;
-        const entry: Shareholder = {
-          id: action.createdId,
-          rank: shareholdersState.length + 1,
-          kind: action.holderKind,
-          name: action.name,
-          firstName: action.firstName,
-          displayName:
-            action.firstName && action.holderKind === "person"
-              ? `${action.name} ${action.firstName}`
-              : action.name,
-          investorId: action.investorId || "—",
-          orgNr: action.holderKind === "company" ? action.investorId : null,
-          contact: null,
-          address: action.address,
-          address2: "",
-          postalCode: action.postalCode,
-          city: action.city,
-          country: action.country,
-          email: action.email,
-          shares: action.shares,
-          openingShares: action.shares,
-          stakeText: `${pct.toFixed(2)}%`,
-          pct,
-          cumPct: 100,
-          transfers: {},
-        };
-        setShareholdersState((prev) => [entry, ...prev]);
-        notify(`Added ${entry.displayName} (${fmt.int(entry.shares)} shares)`);
+        applyPersisted(data.register, data.events ?? eventsState);
+        notify(`Added ${action.name} (${fmt.int(action.shares)} shares)`);
         return { ok: true };
       }
 
@@ -578,71 +409,43 @@ export function Dashboard({ user, capTable }: Props) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "cell-update",
+            source: "copilot",
             id: action.holderId,
             columnKey: action.field,
             value: action.afterValue,
           }),
         });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          return { ok: false, error: err.error ?? "Update rejected by server." };
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.register) {
+          return { ok: false, error: data.error ?? "Update rejected by server." };
         }
-
-        setShareholdersState((prev) =>
-          prev.map((h) => {
-            if (h.id !== action.holderId) return h;
-            return { ...h, [action.field]: action.afterValue };
-          })
-        );
+        applyPersisted(data.register, data.events ?? eventsState);
         notify(`Updated ${action.fieldLabel} for ${action.holderName}`);
         return { ok: true };
       }
 
       return { ok: false, error: "Unsupported action." };
     },
-    [canWrite, notify, shareholdersState.length]
+    [applyPersisted, canWrite, eventsState, notify]
   );
 
   const handleRevertChatAction = useCallback(
     async (action: StagedAction): Promise<{ ok: boolean; error?: string }> => {
       if (!canWrite) return { ok: false, error: "Read-only access." };
-
-      if (action.kind === "transfer") {
-        setShareholdersState((prev) => {
-          if (action.toId) {
-            return prev.map((h) => {
-              if (h.id === action.fromId) return { ...h, shares: h.shares + action.shares };
-              if (h.id === action.toId) return { ...h, shares: Math.max(0, h.shares - action.shares) };
-              return h;
-            });
-          } else {
-            return prev
-              .filter((h) => h.id !== `custom-${action.id}`)
-              .map((h) => (h.id === action.fromId ? { ...h, shares: h.shares + action.shares } : h));
-          }
-        });
-        setLiveTransactions((prev) => prev.filter((tx) => tx.id !== `LEDGER-${action.id.slice(-5).toUpperCase()}`));
-        notify(`Reverted transfer of ${fmt.int(action.shares)} shares`);
-        return { ok: true };
+      const res = await fetch("/api/register/write", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "revert", source: "revert", target: action }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.register) {
+        return { ok: false, error: data.error ?? "Could not revert transaction." };
       }
-
-      if (action.kind === "add_holder") {
-        setShareholdersState((prev) => prev.filter((h) => h.id !== action.createdId));
-        notify(`Removed ${action.name} from register`);
-        return { ok: true };
-      }
-
-      if (action.kind === "update_field") {
-        setShareholdersState((prev) =>
-          prev.map((h) => (h.id === action.holderId ? { ...h, [action.field]: action.beforeValue } : h))
-        );
-        notify(`Reverted ${action.fieldLabel} for ${action.holderName}`);
-        return { ok: true };
-      }
-
-      return { ok: false, error: "Cannot revert action." };
+      applyPersisted(data.register, data.events ?? eventsState);
+      notify("Reverted and written to the register log");
+      return { ok: true };
     },
-    [canWrite, notify]
+    [applyPersisted, canWrite, eventsState, notify]
   );
 
   const gridProps = { density, onStats: setStats, onNotice: notify, canWrite };
@@ -675,9 +478,11 @@ export function Dashboard({ user, capTable }: Props) {
             placeholder={
               sheet === "ledger"
                 ? "Search ledger refs, counterparties, audit hashes…"
-                : sheet === "companies" || sheet === "matrix"
-                  ? "Search registered companies, org. numbers, cities…"
-                  : "Search shareholders, org. numbers, cities, e-mails…"
+                : sheet === "log"
+                  ? "Search adds, credits, debits, actors, audit hashes…"
+                  : sheet === "companies" || sheet === "matrix"
+                    ? "Search registered companies, org. numbers, cities…"
+                    : "Search shareholders, org. numbers, cities, e-mails…"
             }
             className="min-w-0 flex-1 bg-transparent text-[13px] placeholder:text-neutral-400 focus:outline-none"
           />
@@ -782,14 +587,16 @@ export function Dashboard({ user, capTable }: Props) {
             >
               <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                 <h1 suppressHydrationWarning className="text-[19px] font-semibold tracking-tight">
-                  Good {greeting()}, {user.name.split(" ")[0]}
+                  Welcome, {user.name.split(" ")[0]}
                 </h1>
                 <p className="text-[12.5px] text-neutral-500">
                   {sheet === "companies"
                     ? `${liveCapTable.summary.companies} registered companies on the ${capTable.name} register · ${fmt.pct(liveCapTable.summary.companySharesPct, 1)} of share capital`
                     : sheet === "matrix"
                       ? `Ownership matrix of registered companies in ${capTable.name} · ranked by stake, city cluster and control band`
-                      : `Shareholder register of ${capTable.name} (org. nr ${capTable.orgNr}) · ${fmt.int(capTable.sharesOutstanding)} shares across ${liveCapTable.summary.holders} holders`}
+                      : sheet === "log"
+                        ? `${eventsState.length} persisted register events · every add, credit, debit and field change`
+                        : `Shareholder register of ${capTable.name} (org. nr ${capTable.orgNr}) · ${fmt.int(liveCapTable.sharesOutstanding)} shares across ${liveCapTable.summary.holders} holders`}
                 </p>
               </div>
 
@@ -875,7 +682,11 @@ export function Dashboard({ user, capTable }: Props) {
         </div>
 
         {/* Workbook */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-black/[0.07] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.05),0_12px_40px_-20px_rgba(0,0,0,0.15)]">
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-black/[0.1] bg-white"
+          )}
+        >
           <div className="relative min-h-0 flex-1">
             <AnimatePresence mode="popLayout" initial={false} custom={direction}>
               <motion.div
@@ -912,6 +723,17 @@ export function Dashboard({ user, capTable }: Props) {
                     getRowId={(tx) => tx.id}
                     onOpenRow={(tx) => selectHolderById(tx.buyerId)}
                     emptyMessage="No ledger entries match your search."
+                    {...gridProps}
+                    canWrite={false}
+                  />
+                )}
+                {sheet === "log" && (
+                  <SheetGrid
+                    id="log"
+                    rows={logRows}
+                    columns={logCols}
+                    getRowId={(e) => e.id}
+                    emptyMessage="No register events match your search."
                     {...gridProps}
                     canWrite={false}
                   />
@@ -985,6 +807,7 @@ export function Dashboard({ user, capTable }: Props) {
       />
       <RegistrarChatDrawer
         open={chatOpen}
+        onOpen={() => setChatOpen(true)}
         onClose={() => setChatOpen(false)}
         register={liveCapTable}
         canWrite={canWrite}
@@ -1155,11 +978,6 @@ export function Dashboard({ user, capTable }: Props) {
       </AnimatePresence>
     </div>
   );
-}
-
-function greeting() {
-  const h = new Date().getHours();
-  return h < 12 ? "morning" : h < 18 ? "afternoon" : "evening";
 }
 
 function StatsBar({ stats }: { stats: Stats | null }) {

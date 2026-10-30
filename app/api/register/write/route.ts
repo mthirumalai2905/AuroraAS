@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { canWriteDashboard } from "@/lib/auth";
+import { applyRegisterWrite } from "@/lib/data/register-db";
+
+export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   const clerkUser = await currentUser();
@@ -24,32 +27,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request payload." }, { status: 400 });
   }
 
-  // Server-side safety verification for transfers
-  if (body.action === "transfer-shares") {
-    const shares = Number(body.shares);
-    const fromBefore = Number(body.fromBefore);
-    const fromAfter = Number(body.fromAfter);
-    const toBefore = Number(body.toBefore);
-    const toAfter = Number(body.toAfter);
-
-    if (!Number.isInteger(shares) || shares <= 0) {
-      return NextResponse.json({ error: "Share transfer amount must be a positive integer." }, { status: 400 });
-    }
-    if (fromBefore < shares || fromAfter < 0) {
-      return NextResponse.json({ error: "Insufficient sender balance for this transfer." }, { status: 400 });
-    }
-    if (fromBefore - shares !== fromAfter || toBefore + shares !== toAfter) {
-      return NextResponse.json({ error: "Transfer conservation check failed (before/after mismatch)." }, { status: 400 });
-    }
-    if (body.fromId && body.toId && body.fromId === body.toId) {
-      return NextResponse.json({ error: "Sender and recipient cannot be the same shareholder." }, { status: 400 });
-    }
+  const result = applyRegisterWrite(primaryEmail ?? "", body as Record<string, unknown>);
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: 400 });
   }
 
   return NextResponse.json({
     ok: true,
     updatedBy: primaryEmail,
     updatedAt: new Date().toISOString(),
-    action: body.action ?? "update",
+    action: (body as { action?: string }).action ?? "update",
+    register: result.register,
+    events: result.events,
   });
 }

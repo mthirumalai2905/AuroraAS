@@ -1,22 +1,16 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
-  AlertTriangle,
   ArrowRight,
   ArrowRightLeft,
   Check,
   CheckCircle2,
-  Lock,
-  MessageSquareText,
   RotateCcw,
-  Send,
-  ShieldAlert,
-  ShieldCheck,
   Sparkles,
   UserPlus,
-  X,
 } from "lucide-react";
 import { SHARES_OUTSTANDING, type AuroraEquityRegister, type Shareholder, type ShareholderKind } from "@/lib/data/aurora-equity";
 import { fmt } from "@/lib/format";
@@ -90,6 +84,7 @@ type ChatMessage = {
 
 type Props = {
   open: boolean;
+  onOpen: () => void;
   onClose: () => void;
   register: AuroraEquityRegister;
   canWrite: boolean;
@@ -100,6 +95,176 @@ type Props = {
 
 function nowTime() {
   return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+type OrbMood = "idle" | "listen" | "think" | "angry" | "funny" | "light";
+
+function moodFromReply(text: string): OrbMood | null {
+  const t = text.toLowerCase();
+  if (/safety stop|denied|cannot|could not|insufficient|error|rejected/.test(t)) return "angry";
+  if (/confirm below|added|executed|done|applied/.test(t)) return "light";
+  return null;
+}
+
+function SiriFace({
+  live,
+  gaze,
+  blink,
+  thinking,
+  lastReply,
+  typing,
+}: {
+  live: boolean;
+  gaze: { x: number; y: number };
+  blink: boolean;
+  thinking: boolean;
+  lastReply: string;
+  typing: boolean;
+}) {
+  const [mood, setMood] = useState<OrbMood>("idle");
+  const [pop, setPop] = useState(false);
+
+  useEffect(() => {
+    if (thinking) {
+      setMood("think");
+      return;
+    }
+    if (typing) {
+      setMood("listen");
+      return;
+    }
+    const fromReply = moodFromReply(lastReply);
+    if (fromReply) {
+      setMood(fromReply);
+      return;
+    }
+    setMood("idle");
+  }, [thinking, typing, lastReply]);
+
+  useEffect(() => {
+    if (thinking || typing) return;
+    let timeout = 0;
+    let cancelled = false;
+    const loop = () => {
+      timeout = window.setTimeout(() => {
+        if (cancelled) return;
+        const next = (["funny", "light", "angry", "idle"] as OrbMood[])[Math.floor(Math.random() * 4)];
+        setMood(next);
+        setPop(true);
+        window.setTimeout(() => {
+          setPop(false);
+          if (!cancelled && !thinking && !typing) loop();
+        }, 900);
+      }, 4200 + Math.random() * 3800);
+    };
+    loop();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [thinking, typing]);
+
+  const angry = mood === "angry";
+  const funny = mood === "funny";
+  const light = mood === "light";
+
+  return (
+    <motion.span
+      className="relative grid h-[132px] w-[132px] place-items-center overflow-visible"
+      animate={{
+        scale: pop ? 1.16 : live ? 1.05 : 1,
+        rotate: angry ? [-2, 2, -1, 1, 0] : funny ? [-3, 3, 0] : 0,
+      }}
+      transition={{ type: "spring", stiffness: 260, damping: 16 }}
+    >
+      <span className="siri-halo absolute -inset-8 rounded-full animate-siri-breathe" />
+      <span className="siri-blob siri-blob-a absolute -inset-9 animate-siri-blob-a" />
+      <span className="siri-blob siri-blob-b absolute -inset-11 animate-siri-blob-b" />
+      <span className="siri-blob siri-blob-c absolute -inset-7 animate-siri-blob-c" />
+      <span
+        className={cn(
+          "relative h-[118px] w-[118px] overflow-hidden rounded-full shadow-[0_10px_26px_rgba(88,70,160,0.2)]",
+          angry && "saturate-150 hue-rotate-[-12deg]",
+          funny && "saturate-125",
+          light && "brightness-110"
+        )}
+      >
+        <img
+          src="/images/siri-orb.jpg"
+          alt=""
+          draggable={false}
+          className="h-full w-full scale-[1.12] object-cover saturate-[1.25] contrast-125"
+        />
+        <span className="absolute inset-0 bg-[radial-gradient(circle_at_50%_46%,rgba(70,40,120,0.14),transparent_46%)]" />
+        <span
+          className={cn("absolute top-[45%] left-1/2 flex items-center", angry ? "gap-[8px]" : "gap-[11px]")}
+          style={{
+            transform: `translate(calc(-50% + ${gaze.x}px), calc(-50% + ${gaze.y + (funny ? 2 : 0)}px))`,
+          }}
+        >
+          <span
+            className={cn(
+              "siri-eye siri-eye-sm",
+              blink && "scale-y-[0.1]",
+              angry && !blink && "-rotate-[18deg] scale-y-[0.62]",
+              funny && !blink && "scale-y-[0.12] -rotate-6",
+              light && !blink && "scale-x-125 scale-y-[0.78]"
+            )}
+          />
+          <span
+            className={cn(
+              "siri-eye siri-eye-sm",
+              blink && "scale-y-[0.1]",
+              angry && !blink && "rotate-[18deg] scale-y-[0.62]",
+              funny && !blink && "scale-y-110 scale-x-110",
+              light && !blink && "scale-x-125 scale-y-[0.78]"
+            )}
+          />
+        </span>
+        {funny && (
+          <span className="absolute top-[62%] left-1/2 h-2.5 w-6 -translate-x-1/2 rounded-[100%] border-b-2 border-white/80" />
+        )}
+      </span>
+    </motion.span>
+  );
+}
+
+function ChatReply({ text }: { text: string }) {
+  const lines = text
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const bulletLines = lines.filter((line) => /^[-•*]\s+/.test(line) || /^\d+[.)]\s+/.test(line));
+
+  const toItems = (source: string[]) =>
+    source.map((line) => line.replace(/^[-•*]\s+/, "").replace(/^\d+[.)]\s+/, ""));
+
+  let items: string[] | null = null;
+  if (bulletLines.length >= 2) {
+    items = toItems(bulletLines);
+  } else if (lines.length === 1 && text.length > 150) {
+    const parts = text.split(/(?<=[.!?])\s+/).map((p) => p.trim()).filter((p) => p.length > 8);
+    if (parts.length >= 3) items = parts.slice(0, 5);
+  }
+
+  if (items && items.length >= 2) {
+    const lead = lines.find((line) => !/^[-•*]|\d+[.)]/.test(line));
+    return (
+      <div className="text-[14px] leading-snug text-neutral-800">
+        {lead && !/^[-•*]\s+|^\d+[.)]\s+/.test(lead) && <p className="mb-1.5">{lead}</p>}
+        <ul className="space-y-1">
+          {items.map((item, i) => (
+            <li key={`${item}-${i}`} className="flex gap-2">
+              <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-neutral-400" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
+  return <p className="text-[14px] leading-snug text-neutral-800">{text}</p>;
 }
 
 function parseShareNumber(raw: string): number | null {
@@ -148,40 +313,87 @@ function findMatchingHolders(query: string, holders: Shareholder[]): Shareholder
 
 export function RegistrarChatDrawer({
   open,
+  onOpen,
   onClose,
   register,
   canWrite,
-  userEmail,
   onExecuteAction,
   onRevertAction,
 }: Props) {
   const [input, setInput] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [thinking, setThinking] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [
-    {
-      id: "welcome",
-      sender: "assistant",
-      timestamp: "Ready",
-      text: canWrite
-        ? `Registrar Copilot active for ${userEmail}. Every share transfer or new entry is staged with a full pre-flight verification card and never mutates the register until you explicitly confirm.`
-        : `Registrar Copilot is in read-only mode (${userEmail}). You can query shareholders and stakes, but write operations are restricted to paal@synx.tools and thiru@synx.tools.`,
-    },
-  ]);
+  const [applying, setApplying] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const orbRef = useRef<HTMLButtonElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const typingUntil = useRef(0);
+  const openedAt = useRef(0);
+  const [mounted, setMounted] = useState(false);
+  const [gaze, setGaze] = useState({ x: 0, y: 0 });
+  const [blink, setBlink] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (open) {
-      setTimeout(() => inputRef.current?.focus(), 120);
+      openedAt.current = Date.now();
+      const t = setTimeout(() => inputRef.current?.focus(), 180);
+      return () => clearTimeout(t);
     }
   }, [open]);
 
   useEffect(() => {
-    const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages, open]);
+    if (!open) return;
+    let timeout = 0;
+    let cancelled = false;
+    const loop = () => {
+      timeout = window.setTimeout(() => {
+        if (cancelled) return;
+        setBlink(true);
+        window.setTimeout(() => {
+          setBlink(false);
+          if (!cancelled) loop();
+        }, 130);
+      }, 2400 + Math.random() * 2400);
+    };
+    loop();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [open]);
+
+  function lookAt(clientX: number, clientY: number) {
+    const orb = orbRef.current;
+    if (!orb) return;
+    const r = orb.getBoundingClientRect();
+    setGaze({
+      x: Math.max(-7, Math.min(7, (clientX - (r.left + r.width / 2)) / 18)),
+      y: Math.max(-5, Math.min(6, (clientY - (r.top + r.height * 0.46)) / 22)),
+    });
+  }
+
+  function lookAtInput() {
+    const el = inputRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const ratio = Math.min(1, el.value.length / 36);
+    lookAt(r.left + r.width * (0.28 + ratio * 0.44), r.top + 6);
+    typingUntil.current = Date.now() + 1800;
+  }
+
+  useEffect(() => {
+    if (!open || !thinking) return;
+    const orb = orbRef.current;
+    if (!orb) return;
+    const r = orb.getBoundingClientRect();
+    lookAt(r.left + r.width / 2, r.top - 90);
+  }, [open, thinking]);
 
   const pendingAction = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -211,8 +423,10 @@ export function RegistrarChatDrawer({
   async function confirmAction(action: StagedAction) {
     if (busyId) return;
     setBusyId(action.id);
+    setApplying(true);
     const res = await onExecuteAction(action);
     setBusyId(null);
+    setApplying(false);
 
     if (!res.ok) {
       setMessages((prev) => [
@@ -454,200 +668,162 @@ export function RegistrarChatDrawer({
     if (!input.trim()) return;
     const text = input;
     setInput("");
+    if (!open) onOpen();
     processCommand(text);
   }
 
-  return (
-    <AnimatePresence>
-      {open && (
-        <>
+  const live = thinking || applying || Boolean(busyId);
+
+  useEffect(() => {
+    const el = chatScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [messages, thinking, applying]);
+
+  if (!open || !mounted) return null;
+
+  return createPortal(
+    <motion.div
+      className="fixed inset-0 z-[400]"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+      onMouseMove={(e) => {
+        if (thinking || Date.now() < typingUntil.current) return;
+        lookAt(e.clientX, e.clientY);
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => {
+          if (Date.now() - openedAt.current < 450) return;
+          onClose();
+        }}
+        aria-label="Dismiss Copilot"
+        className="absolute inset-0 bg-transparent"
+      />
+
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[34%] overflow-hidden">
+        <div className="siri-rim absolute inset-0 opacity-80" />
+        <div className="absolute inset-x-0 bottom-0 h-full bg-[radial-gradient(46%_68%_at_50%_118%,rgba(186,156,255,0.32),rgba(56,189,248,0.12)_42%,transparent_70%)]" />
+      </div>
+
+      <div className="pointer-events-none relative flex h-full flex-col justify-end">
+        <div className="pointer-events-auto mx-auto flex min-h-0 w-full max-w-[560px] flex-1 flex-col justify-end px-4 pb-1 pt-14">
           <motion.div
-            key="chat-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px]"
-          />
-          <motion.aside
-            key="chat-panel"
-            initial={{ x: "105%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "105%" }}
-            transition={{ type: "spring", stiffness: 340, damping: 36 }}
-            className="fixed inset-y-2 right-2 z-50 flex w-[min(480px,calc(100vw-16px))] flex-col overflow-hidden rounded-[22px] border border-black/[0.08] bg-white/95 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.38)] backdrop-blur-2xl"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex min-h-0 flex-col overflow-hidden rounded-[24px] border border-white/55 bg-white/48 shadow-[0_12px_36px_rgba(22,20,31,0.08)] backdrop-blur-xl"
           >
-            {/* Header */}
-            <div className="flex items-center gap-3 border-b border-black/[0.06] bg-white/80 px-5 py-3.5">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[#231d3a] to-[#0a84ff] text-white shadow-sm">
-                <Sparkles className="h-4 w-4" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className=" truncate text-[15px] font-semibold text-neutral-900">Registrar Copilot</span>
-                  {canWrite ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-[#30d158]/15 px-2 py-0.5 text-[10.5px] font-semibold text-[#1f7a35]">
-                      <ShieldCheck className="h-3 w-3" /> Write-enabled
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-black/[0.06] px-2 py-0.5 text-[10.5px] font-medium text-neutral-600">
-                      <Lock className="h-3 w-3" /> Read-only
-                    </span>
-                  )}
-                </div>
-                <p className="truncate text-[11.5px] text-neutral-500">
-                  Two-step verified share transfers & register entries
+            <div
+              ref={chatScrollRef}
+              className="min-h-0 max-h-[38vh] overflow-y-auto px-3.5 py-3 scrollbar-thin"
+            >
+              {messages.length === 0 && !thinking ? (
+                <p className="px-2 py-4 text-center text-[20px] leading-tight font-light tracking-tight text-neutral-900">
+                  What can I help you with?
                 </p>
-              </div>
-              <button
-                onClick={onClose}
-                className="grid h-8 w-8 place-items-center rounded-full bg-black/[0.05] text-neutral-500 transition-colors hover:bg-black/[0.1]"
-                aria-label="Close Copilot"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Quick templates bar */}
-            <div className="flex items-center gap-1.5 overflow-x-auto border-b border-black/[0.05] bg-[#f8f8fa] px-4 py-2 scrollbar-none">
-              <button
-                type="button"
-                onClick={() =>
-                  setInput("Transfer 25,000 shares from SEMANTIC AS to EBOOT AS")
-                }
-                className="shrink-0 rounded-full border border-black/[0.08] bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-700 transition-colors hover:border-[#0a84ff]/40 hover:text-[#0a6bd6]"
-              >
-                ⇄ Transfer shares
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  setInput("Add entry SYNX TOOLS AS with 50,000 shares, org nr 928114502, email thiru@synx.tools, city OSLO")
-                }
-                className="shrink-0 rounded-full border border-black/[0.08] bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-700 transition-colors hover:border-[#0a84ff]/40 hover:text-[#0a6bd6]"
-              >
-                ＋ Add shareholder
-              </button>
-              <button
-                type="button"
-                onClick={() => processCommand("Show top 5 shareholders")}
-                className="shrink-0 rounded-full border border-black/[0.08] bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-700 transition-colors hover:border-[#0a84ff]/40 hover:text-[#0a6bd6]"
-              >
-                Top 5 holders
-              </button>
-            </div>
-
-            {/* Messages list */}
-            <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-4 scrollbar-thin">
-              {messages.map((m) => (
-                <div key={m.id} className={cn("flex flex-col", m.sender === "user" ? "items-end" : "items-start")}>
-                  <div
-                    className={cn(
-                      "max-w-[92%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed",
-                      m.sender === "user"
-                        ? "bg-[#231d3a] text-white"
-                        : "border border-black/[0.06] bg-[#f5f5f7] text-neutral-800"
-                    )}
-                  >
-                    <p className="whitespace-pre-line">{m.text}</p>
-                  </div>
-
-                  {/* Disambiguation picker if multiple shareholders matched */}
-                  {m.disambiguation && (
-                    <div className="mt-2 w-full rounded-2xl border border-[#ff9f0a]/30 bg-[#ff9f0a]/[0.06] p-3 text-[12px]">
-                      <div className="flex items-center gap-1.5 font-semibold text-[#9a5b00]">
-                        <AlertTriangle className="h-3.5 w-3.5" /> {m.disambiguation.label}
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {messages.map((m) =>
+                    m.sender === "user" ? (
+                      <div key={m.id} className="ml-auto max-w-[82%] text-right">
+                        <p className="inline-block rounded-2xl rounded-br-md bg-neutral-900 px-3 py-1.5 text-left text-[13px] leading-snug text-white">
+                          {m.text}
+                        </p>
                       </div>
-                      <div className="mt-2 space-y-1.5">
-                        {m.disambiguation.options.map((opt) => {
-                          const h = opt.candidates[0];
-                          return (
-                            <button
-                              key={h.id}
-                              type="button"
-                              onClick={() => processCommand(opt.originalPrompt)}
-                              className="flex w-full items-center justify-between rounded-xl border border-black/[0.08] bg-white px-3 py-2 text-left transition-colors hover:border-[#0a84ff]"
-                            >
-                              <div>
-                                <div className="font-semibold text-neutral-900">
+                    ) : (
+                      <div key={m.id} className="mr-auto w-full max-w-[94%] text-left">
+                        <ChatReply text={m.text} />
+                        {m.disambiguation && (
+                          <div className="mt-2 flex flex-col gap-1.5">
+                            {m.disambiguation.options.map((opt) => {
+                              const h = opt.candidates[0];
+                              return (
+                                <button
+                                  key={h.id}
+                                  type="button"
+                                  onClick={() => processCommand(opt.originalPrompt)}
+                                  className="rounded-full bg-black/[0.05] px-3 py-1.5 text-left text-[13px] text-neutral-800 hover:bg-black/[0.08]"
+                                >
                                   #{h.rank} {h.displayName}
-                                </div>
-                                <div className="text-[11px] text-neutral-500">
-                                  ID: {h.investorId || "—"} · {h.city || "—"}
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <div className="font-mono font-semibold text-neutral-900">{fmt.int(h.shares)} sh</div>
-                                <div className="text-[11px] text-neutral-500">{h.stakeText}</div>
-                              </div>
-                            </button>
-                          );
-                        })}
+                                  <span className="ml-2 text-neutral-500">
+                                    {fmt.int(h.shares)} · {h.stakeText}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {m.stagedAction && (
+                          <div className="mt-2">
+                            <StagedActionCard
+                              action={m.stagedAction}
+                              busy={busyId === m.stagedAction.id}
+                              onConfirm={() => confirmAction(m.stagedAction!)}
+                              onCancel={() => cancelAction(m.stagedAction!)}
+                              onRevert={() => revertAction(m.stagedAction!)}
+                            />
+                          </div>
+                        )}
                       </div>
-                    </div>
+                    )
                   )}
-
-                  {/* Staged transaction verification card */}
-                  {m.stagedAction && (
-                    <StagedActionCard
-                      action={m.stagedAction}
-                      busy={busyId === m.stagedAction.id}
-                      onConfirm={() => confirmAction(m.stagedAction!)}
-                      onCancel={() => cancelAction(m.stagedAction!)}
-                      onRevert={() => revertAction(m.stagedAction!)}
-                    />
-                  )}
-
-                  <span className="mt-1 px-1 text-[10px] text-neutral-400">{m.timestamp}</span>
-                </div>
-              ))}
-              {thinking && (
-                <div className="flex items-center gap-2 rounded-2xl border border-black/[0.06] bg-[#f5f5f7] px-3.5 py-2.5 text-[12.5px] text-neutral-600">
-                  <span className="h-2 w-2 rounded-full bg-[#0a84ff] animate-pulse" />
-                  <span>DeepSeek is analyzing the register…</span>
+                  {thinking && <p className="text-[13px] font-light text-neutral-500">On it…</p>}
+                  {applying && <p className="text-[13px] text-neutral-500">Applying…</p>}
                 </div>
               )}
             </div>
+          </motion.div>
+        </div>
 
-            {/* Input composer */}
-            <form onSubmit={handleSubmit} className="border-t border-black/[0.07] bg-white p-3">
-              <div className="flex items-end gap-2 rounded-2xl border border-black/[0.1] bg-[#f8f8fa] px-3 py-2 focus-within:border-[#0a84ff] focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(10,132,255,0.15)]">
-                <textarea
-                  ref={inputRef}
-                  rows={2}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSubmit(e);
-                    }
-                  }}
-                  placeholder={
-                    canWrite
-                      ? 'e.g. "Take 50,000 shares from SEMANTIC AS and give to EBOOT AS" or "Add entry..."'
-                      : "Ask about shareholders, stakes, or rankings…"
-                  }
-                  className="max-h-28 min-h-[40px] flex-1 resize-none bg-transparent text-[13px] text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  disabled={!input.trim() || thinking}
-                  className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-[#0a84ff] text-white transition-all hover:bg-[#0070e0] disabled:opacity-35"
-                  aria-label="Send instruction"
-                >
-                  <Send className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              <div className="mt-1.5 flex items-center justify-between px-1 text-[10.5px] text-neutral-400">
-                <span>All changes stage a dry-run preview before execution</span>
-                <span>Enter to send</span>
-              </div>
-            </form>
-          </motion.aside>
-        </>
-      )}
-    </AnimatePresence>
+        <form
+          onSubmit={handleSubmit}
+          className="pointer-events-auto relative flex flex-col items-center pb-[max(20px,env(safe-area-inset-bottom))]"
+        >
+          <motion.button
+            ref={orbRef}
+            type="submit"
+            disabled={thinking}
+            aria-label="Ask Copilot"
+            initial={{ y: 24, scale: 0.9, opacity: 0 }}
+            animate={{ y: 0, scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 240, damping: 22 }}
+            className="relative mb-1 grid overflow-visible place-items-center"
+          >
+            <SiriFace
+              live={live}
+              gaze={gaze}
+              blink={blink}
+              thinking={thinking}
+              typing={input.length > 0}
+              lastReply={[...messages].reverse().find((m) => m.sender === "assistant")?.text ?? ""}
+            />
+          </motion.button>
+          <textarea
+            ref={inputRef}
+            rows={1}
+            value={input}
+            onChange={(e) => {
+              setInput(e.target.value);
+              requestAnimationFrame(lookAtInput);
+            }}
+            onFocus={lookAtInput}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+              } else {
+                requestAnimationFrame(lookAtInput);
+              }
+            }}
+            placeholder={thinking ? "Listening…" : "Speak or type, then press Return"}
+            className="w-[min(400px,82vw)] resize-none bg-transparent text-center text-[15px] text-neutral-800 placeholder:text-neutral-400 focus:outline-none"
+          />
+        </form>
+      </div>
+    </motion.div>,
+    document.body
   );
 }
 
@@ -672,22 +848,22 @@ function StagedActionCard({
   return (
     <div
       className={cn(
-        "mt-2.5 w-full overflow-hidden rounded-2xl border text-[12.5px] shadow-sm",
-        isPending && "border-[#0a84ff]/35 bg-white",
-        isExecuted && "border-[#30d158]/40 bg-[#30d158]/[0.04]",
-        (isCancelled || isReverted) && "border-black/[0.08] bg-neutral-50 opacity-75"
+        "mt-2 w-full overflow-hidden rounded-2xl border text-[12.5px] text-white shadow-[0_18px_50px_rgba(22,20,31,0.28)] backdrop-blur-xl",
+        isPending && "border-white/15 bg-[#16141f]/88",
+        isExecuted && "border-[#30d158]/35 bg-[#12351f]/88",
+        (isCancelled || isReverted) && "border-white/10 bg-[#16141f]/70 opacity-75"
       )}
     >
       {/* Card top bar */}
       <div
         className={cn(
           "flex items-center justify-between border-b px-3.5 py-2.5",
-          isPending && "border-[#0a84ff]/15 bg-[#0a84ff]/[0.06]",
+          isPending && "border-white/10 bg-white/[0.04]",
           isExecuted && "border-[#30d158]/20 bg-[#30d158]/[0.1]",
-          (isCancelled || isReverted) && "border-black/[0.06] bg-black/[0.03]"
+          (isCancelled || isReverted) && "border-white/10 bg-white/[0.03]"
         )}
       >
-        <div className="flex items-center gap-2 font-semibold text-neutral-900">
+        <div className="flex items-center gap-2 font-semibold text-white">
           {action.kind === "transfer" ? (
             <>
               <ArrowRightLeft className="h-3.5 w-3.5 text-[#0a6bd6]" />
@@ -707,11 +883,11 @@ function StagedActionCard({
         </div>
         <span
           className={cn(
-            "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
-            isPending && "bg-[#ff9f0a]/20 text-[#9a5b00]",
-            isExecuted && "bg-[#30d158]/20 text-[#1f7a35]",
-            isCancelled && "bg-black/[0.08] text-neutral-600",
-            isReverted && "bg-[#5e5ce6]/15 text-[#4b49c4]"
+            "px-1.5 py-0.5 text-[10px] font-semibold tracking-wider uppercase",
+            isPending && "bg-[#ff9f0a]/20 text-[#ffd60a]",
+            isExecuted && "bg-[#30d158]/20 text-[#30d158]",
+            isCancelled && "bg-white/10 text-white/60",
+            isReverted && "bg-[#5e5ce6]/20 text-[#bfbdff]"
           )}
         >
           {isPending ? "Awaiting confirmation" : isExecuted ? "Committed" : isReverted ? "Reverted" : "Cancelled"}
@@ -722,66 +898,66 @@ function StagedActionCard({
       <div className="space-y-3 p-3.5">
         {action.kind === "transfer" && (
           <>
-            <div className="flex items-center justify-between rounded-xl bg-[#f5f5f7] px-3 py-2">
-              <span className="text-[11.5px] text-neutral-500">Shares to transfer</span>
-              <span className="font-mono text-[14px] font-bold text-neutral-900">
+            <div className="flex items-center justify-between bg-white/[0.06] px-3 py-2">
+              <span className="text-[11.5px] text-white/50">Shares to transfer</span>
+              <span className="font-mono text-[14px] font-bold text-white">
                 {fmt.int(action.shares)} sh ({((action.shares / SHARES_OUTSTANDING) * 100).toFixed(4)}%)
               </span>
             </div>
 
             <div className="space-y-2">
               {/* Sender */}
-              <div className="rounded-xl border border-black/[0.06] p-2.5">
+              <div className="border border-white/12 p-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#d70015]">
+                  <span className="text-[11px] font-semibold tracking-wider text-[#ff8a80] uppercase">
                     From (Debit −{fmt.int(action.shares)})
                   </span>
-                  <span className="text-[11px] text-neutral-500">
+                  <span className="text-[11px] text-white/50">
                     {((action.fromBefore / SHARES_OUTSTANDING) * 100).toFixed(2)}% →{" "}
-                    <strong className="text-neutral-900">
+                    <strong className="text-white">
                       {((action.fromAfter / SHARES_OUTSTANDING) * 100).toFixed(2)}%
                     </strong>
                   </span>
                 </div>
-                <div className="mt-1 font-semibold text-neutral-900">{action.fromName}</div>
-                <div className="mt-1 flex items-center gap-2 font-mono text-[12px] text-neutral-600">
+                <div className="mt-1 font-semibold text-white">{action.fromName}</div>
+                <div className="mt-1 flex items-center gap-2 font-mono text-[12px] text-white/65">
                   <span>{fmt.int(action.fromBefore)}</span>
-                  <ArrowRight className="h-3 w-3 text-neutral-400" />
-                  <span className="font-bold text-[#d70015]">{fmt.int(action.fromAfter)} shares</span>
+                  <ArrowRight className="h-3 w-3 text-white/40" />
+                  <span className="font-bold text-[#ff8a80]">{fmt.int(action.fromAfter)} shares</span>
                 </div>
               </div>
 
               {/* Recipient */}
-              <div className="rounded-xl border border-black/[0.06] p-2.5">
+              <div className="border border-white/12 p-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#1f7a35]">
+                  <span className="text-[11px] font-semibold tracking-wider text-[#7dffa6] uppercase">
                     To (Credit +{fmt.int(action.shares)})
                   </span>
-                  <span className="text-[11px] text-neutral-500">
+                  <span className="text-[11px] text-white/50">
                     {((action.toBefore / SHARES_OUTSTANDING) * 100).toFixed(2)}% →{" "}
-                    <strong className="text-neutral-900">
+                    <strong className="text-white">
                       {((action.toAfter / SHARES_OUTSTANDING) * 100).toFixed(2)}%
                     </strong>
                   </span>
                 </div>
-                <div className="mt-1 flex items-center gap-2 font-semibold text-neutral-900">
+                <div className="mt-1 flex items-center gap-2 font-semibold text-white">
                   <span>{action.toName}</span>
                   {action.toId === null && (
-                    <span className="rounded-full bg-[#0a84ff]/15 px-2 py-0.5 text-[10px] font-semibold text-[#0a6bd6]">
+                    <span className="bg-white/12 px-1.5 py-0.5 text-[10px] font-semibold text-white/80">
                       New holder
                     </span>
                   )}
                 </div>
-                <div className="mt-1 flex items-center gap-2 font-mono text-[12px] text-neutral-600">
+                <div className="mt-1 flex items-center gap-2 font-mono text-[12px] text-white/65">
                   <span>{fmt.int(action.toBefore)}</span>
-                  <ArrowRight className="h-3 w-3 text-neutral-400" />
-                  <span className="font-bold text-[#1f7a35]">{fmt.int(action.toAfter)} shares</span>
+                  <ArrowRight className="h-3 w-3 text-white/40" />
+                  <span className="font-bold text-[#7dffa6]">{fmt.int(action.toAfter)} shares</span>
                 </div>
               </div>
             </div>
 
             {/* Invariant checks */}
-            <div className="rounded-xl bg-[#30d158]/[0.08] px-3 py-2 text-[11px] text-[#1f7a35]">
+            <div className="bg-[#30d158]/[0.12] px-3 py-2 text-[11px] text-[#7dffa6]">
               <div className="flex items-center gap-1.5 font-medium">
                 <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
                 <span>
@@ -794,33 +970,33 @@ function StagedActionCard({
         )}
 
         {action.kind === "add_holder" && (
-          <div className="space-y-2 rounded-xl border border-black/[0.06] bg-[#f8f8fa] p-3">
+          <div className="space-y-2 border border-white/12 bg-white/[0.05] p-3">
             <div className="flex items-baseline justify-between">
-              <span className="text-[14px] font-semibold text-neutral-900">
+              <span className="text-[14px] font-semibold text-white">
                 {action.name} {action.firstName}
               </span>
-              <span className="rounded-full bg-[#0a84ff]/12 px-2 py-0.5 text-[10.5px] font-semibold text-[#0a6bd6]">
+              <span className="bg-white/12 px-1.5 py-0.5 text-[10.5px] font-semibold text-white/80">
                 {action.holderKind === "company" ? "Company" : "Private"}
               </span>
             </div>
             <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11.5px]">
               <div>
-                <dt className="text-neutral-500">Shares allocated</dt>
-                <dd className="font-mono font-semibold text-neutral-900">
+                <dt className="text-white/50">Shares allocated</dt>
+                <dd className="font-mono font-semibold text-white">
                   {fmt.int(action.shares)} ({((action.shares / SHARES_OUTSTANDING) * 100).toFixed(2)}%)
                 </dd>
               </div>
               <div>
-                <dt className="text-neutral-500">Investor ID / Org. nr</dt>
-                <dd className="font-mono text-neutral-900">{action.investorId || "—"}</dd>
+                <dt className="text-white/50">Investor ID / Org. nr</dt>
+                <dd className="font-mono text-white">{action.investorId || "—"}</dd>
               </div>
               <div>
-                <dt className="text-neutral-500">E-mail</dt>
-                <dd className="truncate text-neutral-900">{action.email || "—"}</dd>
+                <dt className="text-white/50">E-mail</dt>
+                <dd className="truncate text-white">{action.email || "—"}</dd>
               </div>
               <div>
-                <dt className="text-neutral-500">Location</dt>
-                <dd className="text-neutral-900">
+                <dt className="text-white/50">Location</dt>
+                <dd className="text-white">
                   {[action.postalCode, action.city, action.country].filter(Boolean).join(" ") || "—"}
                 </dd>
               </div>
@@ -829,13 +1005,13 @@ function StagedActionCard({
         )}
 
         {action.kind === "update_field" && (
-          <div className="space-y-1.5 rounded-xl border border-black/[0.06] bg-[#f8f8fa] p-3">
-            <div className="font-semibold text-neutral-900">{action.holderName}</div>
-            <div className="text-[11.5px] text-neutral-500">Field: {action.fieldLabel}</div>
+          <div className="space-y-1.5 border border-white/12 bg-white/[0.05] p-3">
+            <div className="font-semibold text-white">{action.holderName}</div>
+            <div className="text-[11.5px] text-white/50">Field: {action.fieldLabel}</div>
             <div className="flex items-center gap-2 font-mono text-[12px]">
-              <span className="line-through text-neutral-400">{String(action.beforeValue || "—")}</span>
-              <ArrowRight className="h-3 w-3 text-neutral-400" />
-              <span className="font-semibold text-[#0a6bd6]">{String(action.afterValue)}</span>
+              <span className="line-through text-white/35">{String(action.beforeValue || "—")}</span>
+              <ArrowRight className="h-3 w-3 text-white/40" />
+              <span className="font-semibold text-white">{String(action.afterValue)}</span>
             </div>
           </div>
         )}
@@ -847,7 +1023,7 @@ function StagedActionCard({
               type="button"
               disabled={busy}
               onClick={onConfirm}
-              className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#0a84ff] px-3 text-[12.5px] font-semibold text-white shadow-sm transition-all hover:bg-[#0070e0] active:scale-[0.98] disabled:opacity-50"
+              className="flex h-9 flex-1 items-center justify-center gap-1.5 bg-[#0a84ff] px-3 text-[12.5px] font-semibold text-white hover:bg-[#0070e0] disabled:opacity-50"
             >
               <Check className="h-4 w-4" strokeWidth={2.5} />
               {busy ? "Executing…" : "Confirm & Execute"}
@@ -856,7 +1032,7 @@ function StagedActionCard({
               type="button"
               disabled={busy}
               onClick={onCancel}
-              className="flex h-9 items-center justify-center rounded-xl border border-black/12 bg-white px-3.5 text-[12.5px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
+              className="flex h-9 items-center justify-center border border-white/20 bg-white/8 px-3.5 text-[12.5px] font-medium text-white/85 hover:bg-white/12"
             >
               Cancel
             </button>
@@ -865,14 +1041,14 @@ function StagedActionCard({
 
         {isExecuted && (
           <div className="flex items-center justify-between pt-1">
-            <span className="text-[11px] font-medium text-[#1f7a35]">
+            <span className="text-[11px] font-medium text-[#7dffa6]">
               ✓ Applied to live register at {action.executedAt}
             </span>
             <button
               type="button"
               disabled={busy}
               onClick={onRevert}
-              className="inline-flex items-center gap-1 rounded-lg border border-black/10 bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-700 transition-colors hover:bg-neutral-100"
+              className="inline-flex items-center gap-1 border border-white/20 bg-white/8 px-2.5 py-1 text-[11px] font-medium text-white/80 hover:bg-white/12"
             >
               <RotateCcw className="h-3 w-3" /> Revert
             </button>
