@@ -3,14 +3,16 @@
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
-import { buildRegister } from "@/lib/data/register";
+import { auroraEquity } from "@/lib/data/aurora-equity";
+import { buildCompanyMatrix } from "@/lib/data/company-matrix";
+import { fmt } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const cols = [
-  { key: "you", title: "Your shares", letter: "B" },
-  { key: "pct", title: "Your %", letter: "C" },
-  { key: "northwind", title: "Northwind", letter: "D" },
-  { key: "blackfjord", title: "Blackfjord", letter: "E" },
+  { key: "stake", title: "Stake %", letter: "B" },
+  { key: "shares", title: "Shares", letter: "C" },
+  { key: "block", title: "Co. block", letter: "D" },
+  { key: "band", title: "Position", letter: "E" },
   { key: "rank", title: "Rank", letter: "F" },
 ] as const;
 
@@ -19,8 +21,8 @@ const path = [
 ] as const;
 
 export function PortalPreview() {
-  const rows = useMemo(() => buildRegister("solberg").rows.slice(0, 9), []);
-  const sum = useMemo(() => rows.reduce((s, r) => s + r.shares.you, 0), [rows]);
+  const rows = useMemo(() => buildCompanyMatrix(auroraEquity.shareholders).slice(0, 9), []);
+  const sum = useMemo(() => rows.reduce((s, r) => s + r.shares, 0), [rows]);
   const [step, setStep] = useState(0);
 
   useEffect(() => {
@@ -30,15 +32,17 @@ export function PortalPreview() {
 
   const [c, r] = path[step];
   const cell = (row: (typeof rows)[number], key: (typeof cols)[number]["key"]) => {
-    if (key === "you") return row.shares.you.toLocaleString("en-US");
-    if (key === "pct") return `${row.pct.you.toFixed(2)}%`;
-    if (key === "rank") return `#${row.rank}`;
-    return row.shares[key].toLocaleString("en-US");
+    if (key === "stake") return fmt.pct(row.pct);
+    if (key === "shares") return fmt.int(row.shares);
+    if (key === "block") return fmt.pct(row.corporateBlockPct);
+    if (key === "band") return row.band;
+    return `#${row.companyRank}`;
   };
   const formula = (() => {
-    if (cols[c].key === "pct") return `=B${r + 2}/SHARES_OUT("${rows[r].company.ticker}")`;
-    if (cols[c].key === "rank") return `=RANK(B${r + 2}, B${r + 2}:E${r + 2})`;
-    return `=REGISTER("${rows[r].company.ticker}", "${cols[c].title.replace("Your shares", "You")}")`;
+    if (cols[c].key === "stake") return `=C${r + 2}/${auroraEquity.sharesOutstanding}`;
+    if (cols[c].key === "block") return `=C${r + 2}/SUMIF(kind,"company")`;
+    if (cols[c].key === "rank") return `=RANK(B${r + 2}, B2:B${rows.length + 1})`;
+    return `=HOLDING("AEQ", "${rows[r].name}")`;
   })();
 
   return (
@@ -49,26 +53,26 @@ export function PortalPreview() {
           <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
           <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
         </div>
-        <span className="text-[12px] font-semibold">Shareholder Register</span>
-        <span className="hidden text-[12px] text-muted sm:inline">Solberg Family Office</span>
+        <span className="text-[12px] font-semibold">Aurora Equity AS</span>
+        <span className="hidden text-[12px] text-muted sm:inline">org. nr {auroraEquity.orgNr}</span>
         <div className="ml-auto hidden items-center gap-2 rounded-lg bg-black/[0.04] px-2.5 py-1.5 text-[11px] text-muted sm:flex">
           <Search className="h-3 w-3" /> Search companies <kbd className="ml-4 font-sans text-[10px]">⌘K</kbd>
         </div>
-        <span className="grid h-6 w-6 place-items-center rounded-full bg-plum text-[9px] font-semibold text-white">IS</span>
+        <span className="grid h-6 w-6 place-items-center rounded-full bg-plum text-[9px] font-semibold text-white">AE</span>
       </div>
 
       <div className="grid grid-cols-2 gap-2 border-b border-black/[0.06] p-3 sm:grid-cols-4">
         {[
-          ["Portfolio value", "$1.84B", "+4.2%"],
-          ["Companies held", "13", "of 13"],
-          ["Ranked #1", "6", "vs rivals"],
-          ["Dividends YTD", "$38.1M", "+11%"],
+          ["Share capital", fmt.int(auroraEquity.sharesOutstanding), "ordinary"],
+          ["Companies", String(auroraEquity.summary.companies), "registered"],
+          ["Largest holder", fmt.pct(auroraEquity.summary.largest.pct, 1), auroraEquity.summary.largest.name],
+          ["Via companies", fmt.pct(auroraEquity.summary.companySharesPct, 1), "of capital"],
         ].map(([l, v, d]) => (
           <div key={l} className="rounded-xl bg-white px-3 py-2.5 ring-1 ring-black/[0.05]">
             <div className="text-[10px] text-muted">{l}</div>
             <div className="mt-0.5 flex items-baseline gap-1.5">
               <span className="text-[16px] font-semibold tracking-tight">{v}</span>
-              <span className="text-[10px] text-[#30a14e]">{d}</span>
+              <span className="truncate text-[10px] text-muted">{d}</span>
             </div>
           </div>
         ))}
@@ -112,10 +116,7 @@ export function PortalPreview() {
                   {ri + 2}
                 </td>
                 <td className="border-r border-b border-black/[0.05] px-3 py-2.5">
-                  <span className="flex items-center gap-2">
-                    <span className="h-3.5 w-3.5 rounded" style={{ background: `linear-gradient(135deg, ${row.company.colors[0]}, ${row.company.colors[1]})` }} />
-                    <span className="truncate font-medium">{row.company.name}</span>
-                  </span>
+                  <span className="truncate font-medium">{row.name}</span>
                 </td>
                 {cols.map((col, ci) => (
                   <td
@@ -123,7 +124,7 @@ export function PortalPreview() {
                     className={cn(
                       "relative border-r border-b border-black/[0.05] px-3 py-2.5 text-right tabular-nums",
                       ci > 2 && "hidden sm:table-cell",
-                      col.key === "rank" && row.rank === 1 && "text-[#30a14e]",
+                      col.key === "rank" && row.companyRank === 1 && "text-[#30a14e]",
                     )}
                   >
                     {ci === c && ri === r && (
@@ -143,13 +144,13 @@ export function PortalPreview() {
       </div>
 
       <div className="flex items-center gap-1 border-t border-black/[0.06] bg-[#f4f4f7] px-2 py-1.5 text-[11px]">
-        {["Holdings", "Ownership matrix", "Transactions", "Dividends"].map((t, i) => (
+        {["Aurora Equity", "Trade Ledger", "Companies", "Ownership matrix"].map((t, i) => (
           <span key={t} className={cn("rounded-md px-2.5 py-1", i === 0 ? "bg-white font-medium shadow-sm" : "text-muted")}>
             {t}
           </span>
         ))}
         <span className="ml-auto hidden pr-2 text-muted sm:inline">
-          Sum: {sum.toLocaleString("en-US")} · Avg: {Math.round(sum / rows.length).toLocaleString("en-US")}
+          Sum: {sum.toLocaleString("en-US")} · {rows.length} companies
         </span>
       </div>
     </div>

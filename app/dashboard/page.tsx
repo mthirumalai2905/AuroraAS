@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 import { SESSION_COOKIE, getStakeholder, resolveClerkStakeholder, type Stakeholder } from "@/lib/auth";
-import { buildRegister, getHolders } from "@/lib/data/register";
 import { auroraEquity } from "@/lib/data/aurora-equity";
 
 export const metadata: Metadata = { title: "Stakeholder dashboard" };
@@ -32,7 +31,7 @@ async function DashboardContent() {
 
   if (!user) redirect("/login");
 
-  return <Dashboard user={user} register={buildRegister(user.id)} holders={getHolders(user.entity)} capTable={auroraEquity} />;
+  return <Dashboard user={user} capTable={auroraEquity} />;
 }
 
 export default function DashboardPage() {

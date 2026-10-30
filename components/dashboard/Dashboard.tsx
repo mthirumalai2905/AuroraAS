@@ -5,11 +5,9 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Check,
   ChevronDown,
   Download,
   FileSpreadsheet,
-  Filter,
   Keyboard,
   Lock,
   LogOut,
@@ -25,49 +23,40 @@ import {
 } from "lucide-react";
 import { useClerk } from "@clerk/nextjs";
 import { LogoMark } from "@/components/ui/Logo";
-import { KpiStrip } from "@/components/dashboard/KpiStrip";
 import { RegisterKpis } from "@/components/dashboard/RegisterKpis";
-import { CompanyDrawer } from "@/components/dashboard/CompanyDrawer";
 import { ShareholderDrawer } from "@/components/dashboard/ShareholderDrawer";
 import { RegistrarChatDrawer, type StagedAction } from "@/components/dashboard/RegistrarChatDrawer";
 import { SheetGrid, formatKind, toCSV, type Stats } from "@/components/dashboard/SheetGrid";
-import { dividendColumns, holdingsColumns, ledgerSheetColumns, matrixColumns, shareholderColumns, transactionColumns, type Units } from "@/components/dashboard/sheets";
-import type { Holder, Register, RegisterRow } from "@/lib/data/register";
+import { companyHoldingsColumns, companyMatrixColumns, ledgerSheetColumns, shareholderColumns } from "@/components/dashboard/sheets";
 import type { AuroraEquityRegister, Shareholder, ShareholderKind, TransferKey } from "@/lib/data/aurora-equity";
 import { SHARES_OUTSTANDING, TRANSFER_COLUMNS } from "@/lib/data/aurora-equity";
+import { buildCompanyMatrix } from "@/lib/data/company-matrix";
 import { buildLedgerTransactions, computeAuditHash, type LedgerTransaction } from "@/lib/data/ledger";
 import { canWriteDashboard, type Stakeholder } from "@/lib/auth";
-import { sectors, type Company } from "@/lib/data/companies";
 import { fmt } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const SHEETS = [
   { id: "register", label: "Aurora Equity" },
   { id: "ledger", label: "Trade Ledger" },
-  { id: "holdings", label: "Holdings" },
-  { id: "matrix", label: "Competitor matrix" },
-  { id: "transactions", label: "Transactions" },
-  { id: "dividends", label: "Dividends" },
+  { id: "companies", label: "Companies" },
+  { id: "matrix", label: "Ownership matrix" },
 ] as const;
 type SheetId = (typeof SHEETS)[number]["id"];
 type KindFilter = "all" | ShareholderKind;
 
-type Props = { user: Stakeholder; register: Register; holders: Holder[]; capTable: AuroraEquityRegister };
+type Props = { user: Stakeholder; capTable: AuroraEquityRegister };
 
-export function Dashboard({ user, register, holders, capTable }: Props) {
+export function Dashboard({ user, capTable }: Props) {
   const router = useRouter();
   const { signOut } = useClerk();
   const canWrite = Boolean(user.canWrite && canWriteDashboard(user.email));
   const [sheet, setSheet] = useState<SheetId>("register");
   const [direction, setDirection] = useState(1);
-  const [units, setUnits] = useState<Units>("shares");
   const [kindFilter, setKindFilter] = useState<KindFilter>("all");
   const [density, setDensity] = useState<"compact" | "comfortable">("comfortable");
   const [query, setQuery] = useState("");
-  const [sectorFilter, setSectorFilter] = useState<Set<string>>(new Set());
-  const [filterOpen, setFilterOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [drawer, setDrawer] = useState<RegisterRow | null>(null);
   const [holderDrawer, setHolderDrawer] = useState<Shareholder | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -125,7 +114,6 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
   }, [capTable, shareholdersState]);
 
   const notify = useCallback((msg: string) => setToast({ id: Date.now(), msg }), []);
-  const closeDrawer = useCallback(() => setDrawer(null), []);
   const closeHolderDrawer = useCallback(() => setHolderDrawer(null), []);
   const toggleFullscreen = useCallback(() => setFullscreen((f) => !f), []);
 
@@ -146,7 +134,7 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
         setChatOpen((o) => !o);
       } else if (e.key === "Escape" && chatOpen) {
         setChatOpen(false);
-      } else if (e.key === "Escape" && fullscreen && !drawer && !holderDrawer && !filterOpen && !menuOpen && !chatOpen) {
+      } else if (e.key === "Escape" && fullscreen && !holderDrawer && !menuOpen && !chatOpen) {
         setFullscreen(false);
       } else if (
         e.key.toLowerCase() === "f" &&
@@ -161,18 +149,8 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [fullscreen, drawer, holderDrawer, filterOpen, menuOpen, chatOpen]);
+  }, [fullscreen, holderDrawer, menuOpen, chatOpen]);
 
-  const matches = useCallback(
-    (c: Company, extra = "") =>
-      (sectorFilter.size === 0 || sectorFilter.has(c.sector)) &&
-      `${c.name} ${c.ticker} ${c.sector} ${extra}`.toLowerCase().includes(query.trim().toLowerCase()),
-    [query, sectorFilter]
-  );
-
-  const rows = useMemo(() => register.rows.filter((r) => matches(r.company)), [register.rows, matches]);
-  const txs = useMemo(() => register.transactions.filter((t) => matches(t.company, `${t.id} ${t.type} ${t.counterparty}`)), [register.transactions, matches]);
-  const divs = useMemo(() => register.dividends.filter((d) => matches(d.company)), [register.dividends, matches]);
   const holdersRows = useMemo(() => {
     const q = query.trim().toLowerCase();
     return liveCapTable.shareholders.filter(
@@ -208,10 +186,39 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
     [liveCapTable.shareholders]
   );
 
-  const hCols = useMemo(() => holdingsColumns(holders, units), [holders, units]);
-  const mCols = useMemo(() => matrixColumns(holders), [holders]);
-  const tCols = useMemo(() => transactionColumns(), []);
-  const dCols = useMemo(() => dividendColumns(), []);
+  const companyRows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return liveCapTable.shareholders.filter(
+      (h) =>
+        h.kind === "company" &&
+        (!q ||
+          `${h.name} ${h.firstName} ${h.investorId} ${h.address} ${h.city} ${h.country} ${h.email}`
+            .toLowerCase()
+            .includes(q))
+    );
+  }, [liveCapTable.shareholders, query]);
+
+  const matrixRows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return buildCompanyMatrix(liveCapTable.shareholders).filter(
+      (h) =>
+        !q ||
+        `${h.name} ${h.investorId} ${h.city} ${h.country} ${h.band} ${h.leaderName} ${h.nextPeerName ?? ""}`
+          .toLowerCase()
+          .includes(q)
+    );
+  }, [liveCapTable.shareholders, query]);
+
+  const cCols = useMemo(
+    () =>
+      companyHoldingsColumns({
+        allShareholders: liveCapTable.shareholders,
+        liveTransactions,
+        onInspectHolder: setHolderDrawer,
+      }),
+    [liveCapTable.shareholders, liveTransactions]
+  );
+  const mCols = useMemo(() => companyMatrixColumns(), []);
   const lCols = useMemo(() => ledgerSheetColumns(selectHolderById), [selectHolderById]);
   const sCols = useMemo(
     () =>
@@ -227,10 +234,8 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
   const counts: Record<SheetId, number> = {
     register: holdersRows.length,
     ledger: ledgerRows.length,
-    holdings: rows.length,
-    matrix: rows.length,
-    transactions: txs.length,
-    dividends: divs.length,
+    companies: companyRows.length,
+    matrix: matrixRows.length,
   };
 
   function switchSheet(id: SheetId) {
@@ -246,18 +251,14 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
         ? toCSV(sCols, holdersRows)
         : sheet === "ledger"
           ? toCSV(lCols, ledgerRows)
-          : sheet === "holdings"
-            ? toCSV(hCols, rows)
-            : sheet === "matrix"
-              ? toCSV(mCols, rows)
-              : sheet === "transactions"
-                ? toCSV(tCols, txs)
-                : toCSV(dCols, divs);
+          : sheet === "companies"
+            ? toCSV(cCols, companyRows)
+            : toCSV(mCols, matrixRows);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = sheet === "register" ? `aurora-equity-as-shareholders-${capTable.asOf}.csv` : `aurora-register-${sheet}-${register.asOf}.csv`;
+    a.download = `aurora-equity-${sheet}-${capTable.asOf}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     notify(`Exported ${SHEETS.find((s) => s.id === sheet)?.label} as CSV`);
@@ -660,7 +661,7 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
           <div className="min-w-0">
             <div className="truncate text-[14px] font-semibold leading-tight">Shareholder Register</div>
             <div className="truncate text-[11px] text-neutral-500">
-              {user.entity} · as of {fmt.date(isRegister ? capTable.asOf : register.asOf)}
+              {user.entity} · as of {fmt.date(capTable.asOf)}
             </div>
           </div>
         </div>
@@ -671,7 +672,13 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
             ref={searchRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={isRegister ? "Search shareholders, org. numbers, cities, e-mails…" : "Search companies, tickers, transactions…"}
+            placeholder={
+              sheet === "ledger"
+                ? "Search ledger refs, counterparties, audit hashes…"
+                : sheet === "companies" || sheet === "matrix"
+                  ? "Search registered companies, org. numbers, cities…"
+                  : "Search shareholders, org. numbers, cities, e-mails…"
+            }
             className="min-w-0 flex-1 bg-transparent text-[13px] placeholder:text-neutral-400 focus:outline-none"
           />
           <kbd className="rounded-md border border-black/10 bg-white px-1.5 py-0.5 font-sans text-[10px] text-neutral-400">Ctrl K</kbd>
@@ -778,13 +785,17 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
                   Good {greeting()}, {user.name.split(" ")[0]}
                 </h1>
                 <p className="text-[12.5px] text-neutral-500">
-                  {isRegister
-                    ? `Shareholder register of ${capTable.name} (org. nr ${capTable.orgNr}) · ${fmt.int(capTable.sharesOutstanding)} shares across ${capTable.summary.holders} holders`
-                    : `Your positions across ${register.summary.positions} Aurora companies, compared with every major holder`}
+                  {sheet === "companies"
+                    ? `${liveCapTable.summary.companies} registered companies on the ${capTable.name} register · ${fmt.pct(liveCapTable.summary.companySharesPct, 1)} of share capital`
+                    : sheet === "matrix"
+                      ? `Ownership matrix of registered companies in ${capTable.name} · ranked by stake, city cluster and control band`
+                      : `Shareholder register of ${capTable.name} (org. nr ${capTable.orgNr}) · ${fmt.int(capTable.sharesOutstanding)} shares across ${liveCapTable.summary.holders} holders`}
                 </p>
               </div>
 
-              <div className="hidden md:block">{isRegister ? <RegisterKpis register={liveCapTable} /> : <KpiStrip summary={register.summary} />}</div>
+              <div className="hidden md:block">
+                <RegisterKpis register={liveCapTable} />
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -792,27 +803,6 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-2">
           <AnimatePresence initial={false}>
-            {sheet === "holdings" && (
-              <motion.div
-                key="units"
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: "auto" }}
-                exit={{ opacity: 0, width: 0 }}
-                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                className="overflow-hidden"
-              >
-                <Segmented
-                  id="units"
-                  value={units}
-                  onChange={setUnits}
-                  options={[
-                    { value: "shares", label: "Shares" },
-                    { value: "pct", label: "Ownership %" },
-                    { value: "value", label: "Value" },
-                  ]}
-                />
-              </motion.div>
-            )}
             {isRegister && (
               <motion.div
                 key="kind"
@@ -849,50 +839,6 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
             )}
           </AnimatePresence>
 
-          {!isRegister && sheet !== "ledger" && (
-            <div className="relative">
-              <button
-                onClick={() => setFilterOpen((o) => !o)}
-                className={cn(
-                  "inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-[13px] font-medium transition-all active:scale-[0.97]",
-                  sectorFilter.size ? "border-[#0a84ff]/30 bg-[#0a84ff]/10 text-[#0a6bd6]" : "border-black/[0.08] bg-white text-neutral-700 hover:bg-neutral-50"
-                )}
-              >
-                <Filter className="h-3.5 w-3.5" />
-                {sectorFilter.size ? `${sectorFilter.size} sector${sectorFilter.size > 1 ? "s" : ""}` : "All sectors"}
-              </button>
-              <Popover open={filterOpen} onClose={() => setFilterOpen(false)} className="left-0 w-56">
-                {sectors.map((s) => {
-                  const on = sectorFilter.has(s);
-                  return (
-                    <button
-                      key={s}
-                      onClick={() =>
-                        setSectorFilter((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(s)) next.delete(s);
-                          else next.add(s);
-                          return next;
-                        })
-                      }
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] hover:bg-black/[0.04]"
-                    >
-                      <span className={cn("grid h-4 w-4 place-items-center rounded-[5px] border transition-colors", on ? "border-[#0a84ff] bg-[#0a84ff] text-white" : "border-black/20")}>
-                        {on && <Check className="h-3 w-3" strokeWidth={3} />}
-                      </span>
-                      {s}
-                    </button>
-                  );
-                })}
-                {sectorFilter.size > 0 && (
-                  <button onClick={() => setSectorFilter(new Set())} className="mt-1 w-full border-t border-black/[0.06] px-3 py-2 text-left text-[13px] text-[#0a84ff]">
-                    Clear filters
-                  </button>
-                )}
-              </Popover>
-            </div>
-          )}
-
           <label className="flex h-9 items-center gap-2 rounded-xl border border-black/[0.08] bg-white px-3 md:hidden">
             <Search className="h-3.5 w-3.5 text-neutral-400" />
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search" className="w-28 bg-transparent text-[13px] focus:outline-none" />
@@ -910,7 +856,7 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
 
           <span className="ml-auto hidden items-center gap-1.5 text-[12px] text-neutral-400 xl:flex">
             <Keyboard className="h-3.5 w-3.5" /> Arrow keys to move · Shift to select · Ctrl C to copy ·{" "}
-            {canWrite && isRegister ? "Double-click or Enter to edit cell · " : ""}Enter on a {isRegister ? "shareholder" : "company"} for details · F for full screen
+            {canWrite && isRegister ? "Double-click or Enter to edit cell · " : ""}Enter on a shareholder for details · F for full screen
           </span>
 
           <button
@@ -970,10 +916,33 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
                     canWrite={false}
                   />
                 )}
-                {sheet === "holdings" && <SheetGrid id="holdings" rows={rows} columns={hCols} getRowId={(r) => r.id} onOpenRow={setDrawer} {...gridProps} />}
-                {sheet === "matrix" && <SheetGrid id="matrix" rows={rows} columns={mCols} getRowId={(r) => r.id} onOpenRow={setDrawer} {...gridProps} />}
-                {sheet === "transactions" && <SheetGrid id="transactions" rows={txs} columns={tCols} getRowId={(t) => t.id} {...gridProps} />}
-                {sheet === "dividends" && <SheetGrid id="dividends" rows={divs} columns={dCols} getRowId={(d) => d.id} {...gridProps} />}
+                {sheet === "companies" && (
+                  <SheetGrid
+                    id="companies"
+                    rows={companyRows}
+                    columns={cCols}
+                    getRowId={(h) => h.id}
+                    onOpenRow={setHolderDrawer}
+                    emptyMessage="No registered companies match your search."
+                    {...gridProps}
+                    canWrite={false}
+                  />
+                )}
+                {sheet === "matrix" && (
+                  <SheetGrid
+                    id="matrix"
+                    rows={matrixRows}
+                    columns={mCols}
+                    getRowId={(h) => h.id}
+                    onOpenRow={(row) => {
+                      const found = liveCapTable.shareholders.find((h) => h.id === row.id);
+                      if (found) setHolderDrawer(found);
+                    }}
+                    emptyMessage="No registered companies match your search."
+                    {...gridProps}
+                    canWrite={false}
+                  />
+                )}
               </motion.div>
             </AnimatePresence>
           </div>
@@ -1006,7 +975,6 @@ export function Dashboard({ user, register, holders, capTable }: Props) {
         </div>
       </div>
 
-      <CompanyDrawer row={drawer} holders={holders} onClose={closeDrawer} />
       <ShareholderDrawer
         holder={holderDrawer}
         register={liveCapTable}
