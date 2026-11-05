@@ -32,15 +32,28 @@ export function HomeHero() {
   return (
     <section ref={ref} className="relative h-[100svh] min-h-[700px]">
       <motion.div style={{ clipPath: clip }} className="grain relative h-full overflow-hidden bg-night">
-        <motion.div style={{ y: bgY }} className="absolute inset-0">
-          <motion.div
-            initial={{ scale: 1.14 }}
-            animate={{ scale: 1.02 }}
-            transition={{ duration: 2.8, ease }}
-            className="absolute inset-0"
+        <motion.div style={{ y: bgY }} className="absolute inset-0 scale-[1.08]">
+          <Image
+            src="/images/hero-aurora.jpg"
+            alt=""
+            fill
+            priority
+            quality={80}
+            sizes="100vw"
+            className="object-cover object-[50%_40%]"
+          />
+          <video
+            className="absolute inset-0 h-full w-full object-cover object-[50%_40%] motion-reduce:hidden"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            poster="/images/hero-aurora.jpg"
+            aria-hidden
           >
-            <Image src="/images/hero-sky.jpg" alt="" fill priority quality={90} sizes="100vw" className="object-cover object-[50%_65%]" />
-          </motion.div>
+            <source src="/videos/hero-aurora.mp4" type="video/mp4" />
+          </video>
         </motion.div>
         <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-night/55 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-[45%] bg-gradient-to-t from-night via-night/60 to-transparent" />
