@@ -25,6 +25,7 @@ import { useClerk } from "@clerk/nextjs";
 import { LogoMark } from "@/components/ui/Logo";
 import { RegisterKpis } from "@/components/dashboard/RegisterKpis";
 import { ShareholderDrawer } from "@/components/dashboard/ShareholderDrawer";
+import { ForumBoard } from "@/components/dashboard/ForumBoard";
 import { RegistrarChatDrawer, type StagedAction } from "@/components/dashboard/RegistrarChatDrawer";
 import { SheetGrid, formatKind, toCSV, type Stats } from "@/components/dashboard/SheetGrid";
 import { companyHoldingsColumns, companyMatrixColumns, ledgerSheetColumns, registerLogColumns, shareholderColumns } from "@/components/dashboard/sheets";
@@ -40,6 +41,7 @@ const SHEETS = [
   { id: "register", label: "Aurora Equity" },
   { id: "ledger", label: "Trade Ledger" },
   { id: "log", label: "Register log" },
+  { id: "forum", label: "Forum" },
   { id: "companies", label: "Companies" },
   { id: "matrix", label: "Ownership matrix" },
 ] as const;
@@ -67,6 +69,7 @@ export function Dashboard({ user, capTable, events }: Props) {
   const [showBatchCols, setShowBatchCols] = useState(false);
   const [writeModalOpen, setWriteModalOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [forumCount, setForumCount] = useState(0);
   const [newHolder, setNewHolder] = useState({
     name: "",
     firstName: "",
@@ -247,6 +250,7 @@ export function Dashboard({ user, capTable, events }: Props) {
     register: holdersRows.length,
     ledger: ledgerRows.length,
     log: logRows.length,
+    forum: forumCount,
     companies: companyRows.length,
     matrix: matrixRows.length,
   };
@@ -259,6 +263,10 @@ export function Dashboard({ user, capTable, events }: Props) {
   }
 
   function exportCSV() {
+    if (sheet === "forum") {
+      notify("Forum is a live board, not a spreadsheet export.");
+      return;
+    }
     const csv =
       sheet === "register"
         ? toCSV(sCols, holdersRows)
@@ -736,6 +744,15 @@ export function Dashboard({ user, capTable, events }: Props) {
                     emptyMessage="No register events match your search."
                     {...gridProps}
                     canWrite={false}
+                  />
+                )}
+                {sheet === "forum" && (
+                  <ForumBoard
+                    user={user}
+                    register={liveCapTable}
+                    onSettled={applyPersisted}
+                    onNotice={notify}
+                    onCount={setForumCount}
                   />
                 )}
                 {sheet === "companies" && (

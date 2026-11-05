@@ -2,7 +2,7 @@ import type { AuroraEquityRegister, Shareholder, ShareholderKind } from "@/lib/d
 import { computeAuditHash, type LedgerTransaction } from "@/lib/data/ledger";
 
 export type RegisterEventKind = "add" | "credit" | "debit" | "field_update" | "remove" | "revert";
-export type RegisterEventSource = "grid" | "modal" | "copilot" | "revert" | "seed";
+export type RegisterEventSource = "grid" | "modal" | "copilot" | "revert" | "seed" | "forum";
 
 export type RegisterEvent = {
   id: string;
